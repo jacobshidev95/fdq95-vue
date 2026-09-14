@@ -74,6 +74,19 @@ export const BASE_TEXT: Record<string, string> = {
   application_failed: 'Submission failed. Please try again.',
   application_missing_fields:
     'Please fill in all fields and attach a file.',
+
+  // ---- Home page panels ----
+  top_clicked_videos: 'Top Clicked Videos',
+  latest_uploads: 'Latest Uploads',
+
+  // ---- Center tabs ----
+  about_fdq95: 'About FDQ95',
+  service_center: 'Service Center',
+  news: 'News',
+  partners: 'Partners',
+  contact_us: 'Contact Us',
+  introduction: 'Introduction',
+  management_team: 'Management Team',
 }
 
 export const LANGUAGES: Record<string, string> = {

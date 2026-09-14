@@ -1,36 +1,42 @@
 <script setup lang="ts">
-import { useI18nStore } from '@/stores/i18n'
-
-const i18n = useI18nStore()
+import LeftVideoTicker from '@/components/LeftVideoTicker.vue'
+import CenterContent from '@/components/CenterContent.vue'
+import RightVideoTicker from '@/components/RightVideoTicker.vue'
 </script>
 
 <template>
-  <section class="home">
-    <h1 class="title-gold hero-title">{{ i18n.t('welcome_title') }}</h1>
-    <p class="hero-desc">{{ i18n.t('welcome_desc') }}</p>
-  </section>
+  <div class="home-layout">
+    <LeftVideoTicker class="panel-left" />
+    <CenterContent class="panel-center" />
+    <RightVideoTicker class="panel-right" />
+  </div>
 </template>
 
 <style scoped>
-.home {
-  text-align: center;
-  max-width: 860px;
+.home-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 25% 50% 25%;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
-.hero-title {
-  font-size: 2.25rem;
-  margin: 0 0 1rem;
-  line-height: 1.25;
-  letter-spacing: 0.05em;
+.home-layout > * {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
-.hero-desc {
-  font-size: 1.1rem;
-  line-height: 1.7;
-  color: var(--text-dim);
-  margin-bottom: 2rem;
-}
-@media (max-width: 640px) {
-  .hero-title {
-    font-size: 1.6rem;
+
+/* ---------- Responsive: stack on narrow screens ---------- */
+@media (max-width: 900px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    overflow: visible;
+  }
+  .panel-left,
+  .panel-right {
+    max-height: 320px;
   }
 }
 </style>

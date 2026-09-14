@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { useI18nStore } from '@/stores/i18n'
@@ -7,6 +8,10 @@ import { useAuthStore } from '@/stores/auth'
 
 const i18n = useI18nStore()
 const auth = useAuthStore()
+const route = useRoute()
+
+// Home page uses a full-bleed 3-column layout (no padding).
+const isHome = computed(() => route.path === '/')
 
 onMounted(async () => {
   await i18n.init()
@@ -18,7 +23,7 @@ onMounted(async () => {
 
 <template>
   <AppHeader />
-  <main class="app-main">
+  <main class="app-main" :class="{ 'app-main--full': isHome }">
     <router-view />
   </main>
   <AppFooter />
@@ -31,7 +36,20 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   padding: 3rem 1rem;
+  min-height: 0;
+}
+
+/* Full-bleed variant used by the home page */
+.app-main--full {
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .app-main--full {
+    overflow: visible;
+  }
 }
 </style>
