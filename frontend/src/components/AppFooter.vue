@@ -47,17 +47,24 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
   gap: 1.5rem;
 }
 
-/* Two lines, same-ish length, both stretched edge-to-edge */
+/*
+ * Two lines, both justified left & right:
+ *  - text-align: justify makes all lines except the last stretch edge-to-edge
+ *  - we deliberately DO NOT set text-align-last: justify
+ *    (that was the cause of the over-stretched single-space gaps on line 2)
+ *  - word-spacing: normal keeps single spaces between words
+ */
 .desc {
   margin: 0;
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
   text-align: justify;
-  text-align-last: justify;
+  text-align-last: left;
+  word-spacing: normal;
+  letter-spacing: normal;
   white-space: pre-line;
   font-size: 0.85rem;
   line-height: 1.5;
-  letter-spacing: 0.01em;
 }
 
 .app-link {

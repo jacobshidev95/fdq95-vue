@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { AxiosError } from 'axios'
 import { useI18nStore } from '@/stores/i18n'
 import { api } from '@/api/client'
+import { COUNTRIES } from '@/data/countries'
 
 const i18n = useI18nStore()
 const router = useRouter()
@@ -18,43 +19,75 @@ type Category =
   | 'food'
   | 'clothing'
   | 'industry'
+  | 'tech'
+  | 'iot'
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'medical', label: 'Medical' },
-  { value: 'health', label: 'Health' },
-  { value: 'education', label: 'Education' },
-  { value: 'entertainment', label: 'Entertainment' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'food', label: 'Food' },
-  { value: 'clothing', label: 'Clothing' },
-  { value: 'industry', label: 'Industry' },
+const CATEGORIES: { value: Category; key: string }[] = [
+  { value: 'medical', key: 'Medical' },
+  { value: 'health', key: 'Health' },
+  { value: 'education', key: 'Education' },
+  { value: 'entertainment', key: 'Entertainment' },
+  { value: 'travel', key: 'Travel' },
+  { value: 'food', key: 'Food' },
+  { value: 'clothing', key: 'Clothing' },
+  { value: 'industry', key: 'Industry' },
+  { value: 'tech', key: 'Technology' },
+  { value: 'iot', key: 'IoT' },
 ]
+
+// --- Birth Year options: from currentYear-10 down to currentYear-100 ---
+const currentYear = new Date().getFullYear()
+const BIRTH_YEARS = Array.from({ length: 91 }, (_, i) => currentYear - 10 - i)
+const DEFAULT_BIRTH_YEAR = currentYear - 20
 
 const form = reactive({
   role: 'consumer' as Role,
   user_id: '',
   email: '',
   gender: '',
-  age: null as number | null,
+  birth_year: DEFAULT_BIRTH_YEAR,
   country: '',
   password: '',
   service_category: null as Category | null,
-  phone: '',
-  real_name: '',
+  phone_dial: '+86',
+  phone_number: '',
+  first_name: '',
+  family_name: '',
 })
 
 const error = ref('')
 const success = ref('')
 const loading = ref(false)
 
+const computedAge = computed(() => {
+  if (!form.birth_year) return null
+  return currentYear - form.birth_year
+})
+
 function close() {
   router.push('/')
 }
 
-// Single-selection behavior for checkboxes
 function toggleCategory(cat: Category, checked: boolean) {
   form.service_category = checked ? cat : null
 }
+
+// Detect user country by IP (best-effort; silently ignore failures)
+onMounted(async () => {
+  try {
+    const resp = await fetch('https://ipapi.co/json/', { cache: 'no-store' })
+    if (!resp.ok) return
+    const data = await resp.json()
+    const code = (data?.country_code || '').toUpperCase()
+    if (code && COUNTRIES.some((c) => c.code === code)) {
+      form.country = code
+      const match = COUNTRIES.find((c) => c.code === code)
+      if (match) form.phone_dial = match.dial
+    }
+  } catch {
+    /* offline or blocked — leave defaults */
+  }
+})
 
 async function submit() {
   error.value = ''
@@ -74,16 +107,21 @@ async function submit() {
     password: form.password,
     user_id: form.user_id,
     gender: form.gender || null,
-    age: form.age,
+    age: computedAge.value,
     country: form.country || null,
     role: form.role,
     service_category: form.service_category,
   }
+
   if (form.role === 'provider') {
-    payload.phone = form.phone || null
-    payload.real_name = form.real_name || null
-    // All new providers start as level_4 (Service Provider).
-    // Promotions to level_0..3 happen later via admin actions.
+    const phone = form.phone_number
+      ? `${form.phone_dial} ${form.phone_number}`.trim()
+      : null
+    const realName = [form.first_name, form.family_name]
+      .filter((s) => s.trim())
+      .join(' ')
+    payload.phone = phone
+    payload.real_name = realName || null
     payload.provider_level = 'level_4'
   }
 
@@ -135,11 +173,18 @@ async function submit() {
       <option value="other">{{ i18n.t('other') }}</option>
     </select>
 
-    <label>{{ i18n.t('age') }}</label>
-    <input v-model.number="form.age" type="number" min="1" max="120" />
+    <label>{{ i18n.t('birth_year') }}</label>
+    <select v-model.number="form.birth_year">
+      <option v-for="y in BIRTH_YEARS" :key="y" :value="y">{{ y }}</option>
+    </select>
 
     <label>{{ i18n.t('country') }}</label>
-    <input v-model="form.country" type="text" />
+    <select v-model="form.country">
+      <option value="">--</option>
+      <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
+        {{ c.name }}
+      </option>
+    </select>
 
     <label>{{ i18n.t('password') }} *</label>
     <input
@@ -161,16 +206,35 @@ async function submit() {
             )
           "
         />
-        <span>{{ cat.label }}</span>
+        <span>{{ cat.key }}</span>
       </label>
     </div>
 
     <template v-if="form.role === 'provider'">
       <label>{{ i18n.t('phone') }}</label>
-      <input v-model="form.phone" type="tel" />
+      <div class="phone-row">
+        <select v-model="form.phone_dial" class="dial-select">
+          <option v-for="c in COUNTRIES" :key="c.code" :value="c.dial">
+            {{ c.dial }} · {{ c.code }}
+          </option>
+        </select>
+        <input
+          v-model="form.phone_number"
+          type="tel"
+          class="phone-input"
+          inputmode="tel"
+        />
+      </div>
 
-      <label>{{ i18n.t('real_name') }}</label>
-      <input v-model="form.real_name" type="text" />
+      <label>{{ i18n.t('first_name') }}</label>
+      <input v-model="form.first_name" type="text" autocomplete="given-name" />
+
+      <label>{{ i18n.t('family_name') }}</label>
+      <input
+        v-model="form.family_name"
+        type="text"
+        autocomplete="family-name"
+      />
     </template>
 
     <button
@@ -191,18 +255,18 @@ async function submit() {
 .register-card {
   position: relative;
   width: 100%;
-  max-width: 640px;
+  max-width: 680px;
 }
 .card-title {
   text-align: center;
   margin: 0 0 1rem;
 }
 
-/* 8 checkboxes in 2 rows x 4 columns */
+/* 10 checkboxes → 5 columns × 2 rows */
 .checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
   margin-top: 0.35rem;
 }
 .checkbox-item {
@@ -225,10 +289,18 @@ async function submit() {
   text-overflow: ellipsis;
 }
 
-@media (max-width: 640px) {
-  .checkbox-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+/* Phone row: dial code + local number */
+.phone-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.dial-select {
+  flex: 0 0 140px;
+  margin-top: 0.25rem;
+}
+.phone-input {
+  flex: 1;
 }
 
 .submit-btn {
@@ -255,5 +327,23 @@ async function submit() {
 }
 .close-btn:hover {
   color: var(--gold);
+}
+
+@media (max-width: 720px) {
+  .checkbox-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .checkbox-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .phone-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dial-select {
+    flex: 1;
+  }
 }
 </style>

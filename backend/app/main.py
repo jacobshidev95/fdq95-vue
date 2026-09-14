@@ -14,8 +14,10 @@ from app.schemas import UserCreate, UserRead, UserUpdate
 async def _run_migrations() -> None:
     """Idempotent DDL migrations for existing databases."""
     statements = [
-        # service_category: add 'health'
+        # service_category: add new values (safe to re-run)
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'health'",
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'tech'",
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'iot'",
         # provider_level: create enum type if missing
         (
             "DO $$ BEGIN "

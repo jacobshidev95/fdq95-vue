@@ -23,6 +23,8 @@ class ServiceCategory(str, enum.Enum):
     FOOD = "food"
     CLOTHING = "clothing"
     INDUSTRY = "industry"
+    TECH = "tech"
+    IOT = "iot"
 
 
 class ProviderLevel(str, enum.Enum):

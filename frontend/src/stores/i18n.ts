@@ -12,8 +12,12 @@ export const BASE_TEXT: Record<string, string> = {
   user_id: 'User ID',
   gender: 'Gender',
   age: 'Age',
+  birth_year: 'Birth Year',
   country: 'Country',
   phone: 'Phone',
+  phone_code: 'Code',
+  first_name: 'First Name',
+  family_name: 'Family Name',
   real_name: 'Real Name',
   service_category: 'Service Category',
   account_type: 'Account Type',
@@ -21,8 +25,7 @@ export const BASE_TEXT: Record<string, string> = {
   consumer: 'Service Consumer',
   verify_email: 'Verify Email',
   verify_phone: 'Verify Phone',
-  // Footer text reformatted into two balanced lines (38 / 40 chars).
-  // Keep the literal \n so it stays two lines after translation.
+  // Footer text: two balanced lines (38 / 40 chars), keep the \n
   footer_text:
     'FDQ95 mobile - download our apps to\nenjoy affordable services from anywhere',
   app_store: 'Download on the App Store',
