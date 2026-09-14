@@ -1,5 +1,3 @@
-"""User template — creates the default `Profile` row for a new user."""
-
 import uuid
 
 from sqlalchemy import select
@@ -7,18 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Profile, User
 
-
 DEFAULT_AVATAR = None
 
 
-async def create_profile_for_user(
-    session: AsyncSession, user: User
-) -> Profile:
-    """Create a Profile row from the user template.
-
-    Idempotent — if a Profile already exists it is returned as-is.
-    Called after successful email verification.
-    """
+async def create_profile_for_user(session: AsyncSession, user: User) -> Profile:
+    """Create a Profile row from the user template (idempotent)."""
     existing = await session.scalar(
         select(Profile).where(Profile.user_id == user.id)
     )
@@ -41,7 +32,7 @@ async def create_profile_for_user(
         avatar_url=DEFAULT_AVATAR,
         bio_line_1=line1,
         bio_line_2=line2,
-        real_verified=bool(user.real_name and user.phone_verified),
+        real_verified=False,
     )
     session.add(profile)
     await session.commit()

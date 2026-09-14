@@ -2,20 +2,24 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.auth import auth_backend, fastapi_users
 from app.config import settings
 from app.database import Base, engine
+from app.rate_limit import limiter, _rate_limit_exceeded_handler
 from app.routers import (
     activities,
     applications,
+    auth_extra,
     friends,
     follows,
     jobs,
     messages,
     products,
     profile,
+    register_guard,
     translate,
     videos,
 )
@@ -27,6 +31,8 @@ async def _run_migrations() -> None:
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'health'",
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'tech'",
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'iot'",
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'life'",
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'ai'",
         (
             "DO $$ BEGIN "
             "  CREATE TYPE provider_level AS ENUM "
@@ -36,13 +42,18 @@ async def _run_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_level provider_level",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS managed_by_id UUID",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now()",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(64)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(64)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS real_verified BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS face_enrolled BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS face_credential_id VARCHAR(256)",
     ]
     async with engine.connect() as conn:
         await conn.execution_options(isolation_level="AUTOCOMMIT")
         for stmt in statements:
             try:
                 await conn.execute(text(stmt))
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 print(f"[startup] migration skipped: {e}")
 
 
@@ -54,7 +65,10 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="FDQ95 API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="FDQ95 API", version="0.3.0", lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,11 +82,8 @@ app.add_middleware(
 app.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
 )
-app.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
+# NOTE: default register router is intentionally NOT mounted; register_guard
+# provides a rate-limited, pre-validated replacement.
 app.include_router(
     fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"]
 )
@@ -83,6 +94,14 @@ app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
     prefix="/users",
     tags=["users"],
+)
+
+# guarded registration
+app.include_router(register_guard.router, prefix="/auth", tags=["auth"])
+
+# extra auth endpoints
+app.include_router(
+    auth_extra.router, prefix="/api/auth", tags=["auth-extra"]
 )
 
 # domain routers

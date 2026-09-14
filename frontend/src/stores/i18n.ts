@@ -149,6 +149,41 @@ export const BASE_TEXT: Record<string, string> = {
   send: 'Send',
   no_messages_yet: 'No messages yet',
   upload_placeholder: 'Upload',
+    // ---- registration v2 ----
+  password_confirm: 'Confirm Password',
+  passwords_do_not_match: 'Passwords do not match',
+  passwords_match: 'Passwords match',
+  password_too_short: 'Password must be at least 8 characters',
+  user_id_taken: 'This User ID is already taken',
+  email_taken: 'This email is already registered',
+  available: 'Available',
+  checking: 'Checking...',
+  register_success_verify_email:
+    'Registration successful! Please check your email to verify your account before logging in.',
+
+  // ---- forgot / reset password ----
+  forgot_password: 'Forgot Password?',
+  forgot_password_desc:
+    'Enter your email address and we will send you a link to reset your password.',
+  send_reset_link: 'Send Reset Link',
+  reset_link_sent:
+    'If that email exists, a password reset link has been sent. Check your inbox.',
+  reset_password: 'Reset Password',
+  reset_success: 'Password reset successful! Redirecting to login...',
+  reset_failed: 'Password reset failed. The link may be expired.',
+  invalid_reset_link: 'Invalid reset link',
+  new_password: 'New Password',
+  back_to_login: 'Back to Login',
+
+  // ---- face recognition ----
+  enable_face_login: 'Enable Face Recognition Login',
+  face_login_hint:
+    'You can log in using your face instead of a password. This is optional.',
+  face_login_button: 'Log in with Face',
+  face_login_prompt: 'Enter your face credential ID',
+  face_login_failed: 'Face login failed. Please use your password.',
+  face_enrolled: 'Face recognition is enabled for this account',
+  disable_face: 'Disable Face Recognition',
 }
 
 export const LANGUAGES: Record<string, string> = {

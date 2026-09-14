@@ -11,7 +11,7 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
 from app.config import settings
 from app.database import async_session_maker, get_async_session
-from app.email_service import send_verification_email
+from app.email_service import send_verification_email, send_password_reset_email
 from app.models import ProviderLevel, User, UserRole
 from app.services.user_template import create_profile_for_user
 
@@ -31,18 +31,17 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return await super().create(user_create, safe=safe, request=request)
 
     async def on_after_register(self, user: User, request=None) -> None:
-        print(f"[AUTH] registered user={user.id}")
+        print(f"[AUTH] registered user={user.id} email={user.email}")
 
     async def on_after_request_verify(
         self, user: User, token: str, request=None
     ) -> None:
         try:
             await send_verification_email(user.email, token)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"[AUTH] verification email failed: {e}")
 
     async def on_after_verify(self, user: User, request=None) -> None:
-        """Called after email verification succeeds — build the user template."""
         async with async_session_maker() as session:
             try:
                 profile = await create_profile_for_user(session, user)
@@ -50,13 +49,16 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                     f"[AUTH] profile created for user={user.id} "
                     f"profile={profile.id}"
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 print(f"[AUTH] profile creation failed: {e}")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request=None
     ) -> None:
-        print(f"[AUTH] forgot password user={user.id}")
+        try:
+            await send_password_reset_email(user.email, token)
+        except Exception as e:
+            print(f"[AUTH] password reset email failed: {e}")
 
 
 async def get_user_db(session=Depends(get_async_session)):

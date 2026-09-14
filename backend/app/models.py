@@ -22,7 +22,6 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 from app.database import Base
 
 
-# ---------------------------------------------------------------- enums
 class UserRole(str, enum.Enum):
     PROVIDER = "provider"
     CONSUMER = "consumer"
@@ -39,6 +38,8 @@ class ServiceCategory(str, enum.Enum):
     INDUSTRY = "industry"
     TECH = "tech"
     IOT = "iot"
+    LIFE = "life"
+    AI = "ai"
 
 
 class ProviderLevel(str, enum.Enum):
@@ -62,7 +63,6 @@ class RequestStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
-# ---------------------------------------------------------------- users
 class User(Base, SQLAlchemyBaseUserTableUUID):
     __tablename__ = "users"
 
@@ -70,6 +70,18 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     gender: Mapped[str | None] = mapped_column(String(16), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     country: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # ---- real name (filled later during identity verification) ----
+    first_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    real_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    real_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # ---- face recognition (optional auxiliary login) ----
+    face_enrolled: Mapped[bool] = mapped_column(Boolean, default=False)
+    face_credential_id: Mapped[str | None] = mapped_column(
+        String(256), nullable=True
+    )
 
     role: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole, name="user_role"),
@@ -92,7 +104,6 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     )
 
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    real_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -100,10 +111,7 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     )
 
 
-# ---------------------------------------------------------------- profile (user template)
 class Profile(Base):
-    """User template row created after email verification."""
-
     __tablename__ = "profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -125,10 +133,7 @@ class Profile(Base):
     )
 
 
-# ---------------------------------------------------------------- videos
 class Video(Base):
-    """User-uploaded videos."""
-
     __tablename__ = "videos"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -152,8 +157,6 @@ class Video(Base):
 
 
 class ActivityVideo(Base):
-    """Activity replay videos."""
-
     __tablename__ = "activity_videos"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -174,10 +177,7 @@ class ActivityVideo(Base):
     )
 
 
-# ---------------------------------------------------------------- social graph
 class Follow(Base):
-    """Who I follow (outgoing)."""
-
     __tablename__ = "follows"
     __table_args__ = (
         UniqueConstraint("follower_id", "following_id", name="uq_follow"),
@@ -200,8 +200,6 @@ class Follow(Base):
 
 
 class Follower(Base):
-    """Who follows me (incoming) — kept in sync with `follows`."""
-
     __tablename__ = "followers"
     __table_args__ = (
         UniqueConstraint("user_id", "follower_id", name="uq_follower"),
@@ -223,10 +221,7 @@ class Follower(Base):
     )
 
 
-# ---------------------------------------------------------------- direct messages
 class MessageInbox(Base):
-    """Messages I received."""
-
     __tablename__ = "messages_inbox"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -250,8 +245,6 @@ class MessageInbox(Base):
 
 
 class MessageOutbox(Base):
-    """Messages I sent."""
-
     __tablename__ = "messages_outbox"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -274,10 +267,7 @@ class MessageOutbox(Base):
     )
 
 
-# ---------------------------------------------------------------- friend requests
 class FriendRequestInbox(Base):
-    """Friend requests I received."""
-
     __tablename__ = "friend_requests_inbox"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -299,8 +289,6 @@ class FriendRequestInbox(Base):
 
 
 class FriendRequestOutbox(Base):
-    """Friend requests I sent."""
-
     __tablename__ = "friend_requests_outbox"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -321,10 +309,7 @@ class FriendRequestOutbox(Base):
     )
 
 
-# ---------------------------------------------------------------- friends
 class Friend(Base):
-    """Accepted friendships (row exists for both directions)."""
-
     __tablename__ = "friends"
     __table_args__ = (
         UniqueConstraint("user_id", "friend_id", name="uq_friend"),

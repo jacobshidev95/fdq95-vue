@@ -28,7 +28,7 @@ async def send_email(to: str, subject: str, body: str) -> bool:
             tls_context=ssl.create_default_context(),
         )
         return True
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         print(f"[EMAIL-ERROR] {e}")
         return False
 
@@ -41,5 +41,18 @@ async def send_verification_email(to: str, token: str) -> bool:
         "Please verify your email by clicking the link below:\n"
         f"{link}\n\n"
         "If you didn't sign up, please ignore this email."
+    )
+    return await send_email(to, subject, body)
+
+
+async def send_password_reset_email(to: str, token: str) -> bool:
+    subject = "FDQ95 - Reset your password"
+    link = f"http://localhost:8080/reset-password?token={token}"
+    body = (
+        "You requested a password reset for your FDQ95 account.\n\n"
+        "Click the link below to set a new password:\n"
+        f"{link}\n\n"
+        "If you did not request this, please ignore this email. "
+        "The link expires in 1 hour."
     )
     return await send_email(to, subject, body)

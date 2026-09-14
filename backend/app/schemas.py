@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi_users import schemas
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models import (
     MessageType,
@@ -13,43 +13,55 @@ from app.models import (
 )
 
 
-# ---------------------------------------------------------------- users
 class UserRead(schemas.BaseUser[uuid.UUID]):
     user_id: str
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    real_name: str | None = None
+    real_verified: bool = False
+    face_enrolled: bool = False
     role: UserRole = UserRole.CONSUMER
     service_category: ServiceCategory | None = None
     provider_level: ProviderLevel | None = None
     managed_by_id: uuid.UUID | None = None
     phone: str | None = None
-    real_name: str | None = None
     phone_verified: bool = False
     created_at: datetime | None = None
 
 
 class UserCreate(schemas.BaseUserCreate):
-    user_id: str
+    user_id: str = Field(..., min_length=3, max_length=64)
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     role: UserRole = UserRole.CONSUMER
     service_category: ServiceCategory | None = None
     provider_level: ProviderLevel | None = None
     phone: str | None = None
-    real_name: str | None = None
+
+    @field_validator("user_id")
+    @classmethod
+    def validate_user_id(cls, v: str) -> str:
+        v = v.strip()
+        if not v.isalnum() and not all(c.isalnum() or c in "_-" for c in v):
+            raise ValueError("User ID must be alphanumeric (underscore/hyphen allowed)")
+        return v
 
 
 class UserUpdate(schemas.BaseUserUpdate):
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     phone: str | None = None
-    real_name: str | None = None
 
 
-# ---------------------------------------------------------------- profile
 class ProfileRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -72,7 +84,6 @@ class ProfileUpdate(BaseModel):
     bio_line_2: str | None = None
 
 
-# ---------------------------------------------------------------- videos
 class VideoRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -103,7 +114,6 @@ class ActivityVideoRead(BaseModel):
         from_attributes = True
 
 
-# ---------------------------------------------------------------- messages
 class MessageSend(BaseModel):
     content: str = ""
     content_type: MessageType = MessageType.TEXT
@@ -122,7 +132,6 @@ class MessageRead(BaseModel):
     created_at: datetime
 
 
-# ---------------------------------------------------------------- friend requests
 class FriendRequestRead(BaseModel):
     id: uuid.UUID
     other_id: uuid.UUID
@@ -132,9 +141,39 @@ class FriendRequestRead(BaseModel):
     created_at: datetime
 
 
-# ---------------------------------------------------------------- friend
 class FriendRead(BaseModel):
     user_id: uuid.UUID
     user_string_id: str
     display_name: str
     avatar_url: str | None
+
+
+# ---- availability check ----
+class AvailabilityCheck(BaseModel):
+    user_id: str | None = None
+    email: str | None = None
+
+
+class AvailabilityResult(BaseModel):
+    user_id_taken: bool = False
+    email_taken: bool = False
+    available: bool = True
+
+
+# ---- face recognition ----
+class FaceEnrollRequest(BaseModel):
+    face_credential_id: str = Field(..., min_length=8, max_length=256)
+
+
+class FaceLoginRequest(BaseModel):
+    face_credential_id: str = Field(..., min_length=8, max_length=256)
+
+
+# ---- password reset ----
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(..., min_length=8)
