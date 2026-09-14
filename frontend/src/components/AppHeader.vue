@@ -16,7 +16,6 @@ const currentLang = computed({
   set: (v: string) => i18n.setLanguage(v),
 })
 
-// Toggle label based on current route
 const isJobsPage = computed(() => route.path === '/jobs')
 const jobsButtonLabel = computed(() =>
   isJobsPage.value ? i18n.t('home') : i18n.t('careers'),
@@ -25,11 +24,9 @@ const jobsButtonLabel = computed(() =>
 function goLogin() {
   router.push('/login')
 }
-
 function toggleJobsHome() {
   router.push(isJobsPage.value ? '/' : '/jobs')
 }
-
 function logout() {
   auth.logout()
   router.push('/')
@@ -48,12 +45,6 @@ function logout() {
     </div>
 
     <div class="right">
-      <select v-model="currentLang" class="lang-select">
-        <option v-for="(label, code) in LANGUAGES" :key="code" :value="code">
-          {{ label }}
-        </option>
-      </select>
-
       <button
         v-if="!auth.isAuthenticated"
         class="btn btn-outline nav-btn"
@@ -70,7 +61,15 @@ function logout() {
         {{ jobsButtonLabel }}
       </button>
 
-      <span class="date">{{ today }}</span>
+      <!-- Language select: after nav-btn, same width as nav-btn -->
+      <select v-model="currentLang" class="lang-select nav-btn">
+        <option v-for="(label, code) in LANGUAGES" :key="code" :value="code">
+          {{ label }}
+        </option>
+      </select>
+
+      <!-- Date: pure white with edge; width matches nav-btn -->
+      <span class="date nav-btn">{{ today }}</span>
     </div>
   </header>
 </template>
@@ -115,23 +114,48 @@ function logout() {
   gap: 0.75rem;
   flex-wrap: wrap;
 }
-.lang-select {
-  width: auto;
-  margin: 0;
-  padding: 0.35rem 0.5rem;
-}
 
-/* Equal-width buttons for Login / Logout / Careers / Home */
+/* Every control in the right cluster shares the same width */
 .nav-btn {
   min-width: 100px;
+  width: 100px;
   text-align: center;
   justify-content: center;
 }
 
-.date {
-  color: var(--text-dim);
+/* Language dropdown — styled as a button of the same width */
+.lang-select.nav-btn {
+  padding: 0.35rem 0.5rem;
+  margin: 0;
+  background: #1e1e1e;
+  color: var(--text);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  font-weight: 600;
   font-size: 0.85rem;
+  cursor: pointer;
 }
+
+/* Date — pure white, edge via text-shadow, same width */
+.date.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-shadow:
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000,
+    0 1px 0 #000,
+    0 -1px 0 #000,
+    1px 0 0 #000,
+    -1px 0 0 #000;
+}
+
 .user {
   color: var(--text-dim);
   font-size: 0.9rem;
@@ -148,6 +172,10 @@ function logout() {
   .title-gold {
     font-size: 1rem;
     white-space: normal;
+  }
+  .nav-btn {
+    min-width: 90px;
+    width: 90px;
   }
 }
 </style>

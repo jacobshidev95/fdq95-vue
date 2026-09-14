@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 
 const i18n = useI18nStore()
+const router = useRouter()
 
 type Tab = 'about' | 'services' | 'news' | 'partners' | 'contact'
+
 const active = ref<Tab>('about')
 
 interface Service {
@@ -13,46 +16,16 @@ interface Service {
 }
 
 const SERVICES: Service[] = [
-  {
-    name: 'Medical',
-    desc: 'Access certified medical practitioners, telehealth consultations, and appointment booking.',
-  },
-  {
-    name: 'Health',
-    desc: 'Wellness coaching, nutrition guidance, mental health support, and fitness programmes.',
-  },
-  {
-    name: 'Education',
-    desc: 'Tutoring, exam preparation, language courses, and professional certification training.',
-  },
-  {
-    name: 'Entertainment',
-    desc: 'Event ticketing, live-streaming access, artist booking, and content production services.',
-  },
-  {
-    name: 'Travel',
-    desc: 'Flight and hotel booking, guided tours, visa assistance, and travel insurance.',
-  },
-  {
-    name: 'Food',
-    desc: 'Restaurant discovery, catering, meal delivery, and chef-at-home experiences.',
-  },
-  {
-    name: 'Clothing',
-    desc: 'Personal styling, custom tailoring, wholesale sourcing, and fashion retail partnerships.',
-  },
-  {
-    name: 'Industry',
-    desc: 'Industrial equipment sourcing, manufacturing consulting, and supply-chain coordination.',
-  },
-  {
-    name: 'Technology',
-    desc: 'Software development, cloud migration, cybersecurity, and IT support for businesses.',
-  },
-  {
-    name: 'IoT',
-    desc: 'Smart-device installation, sensor networks, home and industrial automation solutions.',
-  },
+  { name: 'Medical', desc: 'Access certified medical practitioners, telehealth consultations, and appointment booking.' },
+  { name: 'Health', desc: 'Wellness coaching, nutrition guidance, mental health support, and fitness programmes.' },
+  { name: 'Education', desc: 'Tutoring, exam preparation, language courses, and professional certification training.' },
+  { name: 'Entertainment', desc: 'Event ticketing, live-streaming access, artist booking, and content production services.' },
+  { name: 'Travel', desc: 'Flight and hotel booking, guided tours, visa assistance, and travel insurance.' },
+  { name: 'Food', desc: 'Restaurant discovery, catering, meal delivery, and chef-at-home experiences.' },
+  { name: 'Clothing', desc: 'Personal styling, custom tailoring, wholesale sourcing, and fashion retail partnerships.' },
+  { name: 'Industry', desc: 'Industrial equipment sourcing, manufacturing consulting, and supply-chain coordination.' },
+  { name: 'Technology', desc: 'Software development, cloud migration, cybersecurity, and IT support for businesses.' },
+  { name: 'IoT', desc: 'Smart-device installation, sensor networks, home and industrial automation solutions.' },
 ]
 
 const NEWS = [
@@ -90,11 +63,15 @@ const TABS: { key: Tab; labelKey: string }[] = [
   { key: 'partners', labelKey: 'partners' },
   { key: 'contact', labelKey: 'contact_us' },
 ]
+
+function openVideoPlayer() {
+  router.push('/videos')
+}
 </script>
 
 <template>
   <section class="center-panel">
-    <!-- Tab bar -->
+    <!-- Tab bar: 6 buttons, all equal width -->
     <nav class="tab-bar">
       <button
         v-for="t in TABS"
@@ -105,26 +82,25 @@ const TABS: { key: Tab; labelKey: string }[] = [
       >
         {{ i18n.t(t.labelKey) }}
       </button>
+      <button class="tab-btn play-btn" @click="openVideoPlayer">
+        ▶ {{ i18n.t('play_video') }}
+      </button>
     </nav>
 
     <div class="tab-content">
-      <!-- ---------------- About ---------------- -->
       <section v-if="active === 'about'">
         <h2 class="section-title">{{ i18n.t('about_fdq95') }}</h2>
-
         <h3 class="sub-title">{{ i18n.t('introduction') }}</h3>
         <p class="paragraph">
           FDQ95 is a global service marketplace that connects consumers with
           verified providers across medical, health, education, entertainment,
-          travel, food, clothing, industry, technology, and IoT. Our mission is
-          to make high-quality services affordable and accessible to everyone,
-          everywhere.
+          travel, food, clothing, industry, technology, and IoT.
         </p>
         <p class="paragraph">
           Since our founding, we have onboarded thousands of providers in more
-          than 60 countries, built a multi-language platform supporting
-          eight languages, and launched native mobile apps for iOS, Android,
-          and F-Droid.
+          than 60 countries, built a multi-language platform supporting eight
+          languages, and launched native mobile apps for iOS, Android, and
+          F-Droid.
         </p>
 
         <h3 class="sub-title">{{ i18n.t('management_team') }}</h3>
@@ -136,10 +112,8 @@ const TABS: { key: Tab; labelKey: string }[] = [
         </ul>
       </section>
 
-      <!-- ---------------- Services ---------------- -->
       <section v-else-if="active === 'services'">
         <h2 class="section-title">{{ i18n.t('service_center') }}</h2>
-
         <div class="service-grid">
           <div v-for="s in SERVICES" :key="s.name" class="service-card">
             <h4 class="service-name">{{ s.name }}</h4>
@@ -148,10 +122,8 @@ const TABS: { key: Tab; labelKey: string }[] = [
         </div>
       </section>
 
-      <!-- ---------------- News ---------------- -->
       <section v-else-if="active === 'news'">
         <h2 class="section-title">{{ i18n.t('news') }}</h2>
-
         <ul class="news-list">
           <li v-for="n in NEWS" :key="n.title" class="news-item">
             <span class="news-date">{{ n.date }}</span>
@@ -160,10 +132,8 @@ const TABS: { key: Tab; labelKey: string }[] = [
         </ul>
       </section>
 
-      <!-- ---------------- Partners ---------------- -->
       <section v-else-if="active === 'partners'">
         <h2 class="section-title">{{ i18n.t('partners') }}</h2>
-
         <ul class="partner-list">
           <li v-for="p in PARTNERS" :key="p.name" class="partner-item">
             <strong class="partner-name">{{ p.name }}</strong>
@@ -172,10 +142,8 @@ const TABS: { key: Tab; labelKey: string }[] = [
         </ul>
       </section>
 
-      <!-- ---------------- Contact ---------------- -->
       <section v-else-if="active === 'contact'">
         <h2 class="section-title">{{ i18n.t('contact_us') }}</h2>
-
         <ul class="contact-list">
           <li><strong>Email</strong> — contact@fdq95.com</li>
           <li><strong>Support</strong> — support@fdq95.com</li>
@@ -196,12 +164,12 @@ const TABS: { key: Tab; labelKey: string }[] = [
   overflow-y: auto;
 }
 
-/* ---------- Tab bar ---------- */
+/* ---------- Tab bar: 6 equal-width buttons ---------- */
 .tab-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem;
   background: #1a1a1a;
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -209,16 +177,19 @@ const TABS: { key: Tab; labelKey: string }[] = [
   z-index: 2;
 }
 .tab-btn {
-  flex: 1 1 auto;
-  min-width: 110px;
-  padding: 0.5rem 0.75rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
   background: transparent;
   color: var(--text-dim);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tab-btn:hover {
   color: var(--gold);
@@ -230,8 +201,16 @@ const TABS: { key: Tab; labelKey: string }[] = [
   border-color: var(--gold);
   font-weight: 600;
 }
+.play-btn {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.play-btn:hover {
+  background: var(--gold);
+  color: #111;
+}
 
-/* ---------- Content area ---------- */
+/* ---------- Content ---------- */
 .tab-content {
   padding: 1.25rem 1.5rem 2rem;
 }
@@ -252,12 +231,7 @@ const TABS: { key: Tab; labelKey: string }[] = [
   margin: 0 0 0.75rem;
 }
 
-/* ---------- Team ---------- */
-.team-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.team-list { list-style: none; padding: 0; margin: 0; }
 .team-item {
   display: flex;
   justify-content: space-between;
@@ -266,15 +240,9 @@ const TABS: { key: Tab; labelKey: string }[] = [
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
-.team-item:last-child {
-  border-bottom: none;
-}
-.role {
-  color: var(--text-dim);
-  font-size: 0.82rem;
-}
+.team-item:last-child { border-bottom: none; }
+.role { color: var(--text-dim); font-size: 0.82rem; }
 
-/* ---------- Services ---------- */
 .service-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -286,24 +254,10 @@ const TABS: { key: Tab; labelKey: string }[] = [
   border-radius: 8px;
   padding: 0.85rem 1rem;
 }
-.service-name {
-  margin: 0 0 0.35rem;
-  color: var(--gold);
-  font-size: 0.95rem;
-}
-.service-desc {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: 0.82rem;
-  line-height: 1.55;
-}
+.service-name { margin: 0 0 0.35rem; color: var(--gold); font-size: 0.95rem; }
+.service-desc { margin: 0; color: var(--text-dim); font-size: 0.82rem; line-height: 1.55; }
 
-/* ---------- News ---------- */
-.news-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.news-list { list-style: none; padding: 0; margin: 0; }
 .news-item {
   display: flex;
   gap: 0.75rem;
@@ -312,24 +266,11 @@ const TABS: { key: Tab; labelKey: string }[] = [
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
-.news-item:last-child {
-  border-bottom: none;
-}
-.news-date {
-  flex: 0 0 90px;
-  color: var(--text-dim);
-  font-size: 0.78rem;
-}
-.news-title {
-  color: var(--text);
-}
+.news-item:last-child { border-bottom: none; }
+.news-date { flex: 0 0 90px; color: var(--text-dim); font-size: 0.78rem; }
+.news-title { color: var(--text); }
 
-/* ---------- Partners ---------- */
-.partner-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.partner-list { list-style: none; padding: 0; margin: 0; }
 .partner-item {
   display: flex;
   justify-content: space-between;
@@ -338,23 +279,11 @@ const TABS: { key: Tab; labelKey: string }[] = [
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
-.partner-item:last-child {
-  border-bottom: none;
-}
-.partner-name {
-  color: var(--gold);
-}
-.partner-field {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
+.partner-item:last-child { border-bottom: none; }
+.partner-name { color: var(--gold); }
+.partner-field { color: var(--text-dim); font-size: 0.8rem; }
 
-/* ---------- Contact ---------- */
-.contact-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.contact-list { list-style: none; padding: 0; margin: 0; }
 .contact-list li {
   padding: 0.6rem 0.25rem;
   border-bottom: 1px solid var(--border);
@@ -362,23 +291,11 @@ const TABS: { key: Tab; labelKey: string }[] = [
   color: var(--text-dim);
   line-height: 1.6;
 }
-.contact-list li:last-child {
-  border-bottom: none;
-}
-.contact-list strong {
-  color: var(--text);
-  display: inline-block;
-  min-width: 110px;
-}
+.contact-list li:last-child { border-bottom: none; }
+.contact-list strong { color: var(--text); display: inline-block; min-width: 110px; }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 700px) {
-  .service-grid {
-    grid-template-columns: 1fr;
-  }
-  .tab-btn {
-    min-width: 80px;
-    font-size: 0.8rem;
-  }
+  .service-grid { grid-template-columns: 1fr; }
+  .tab-btn { font-size: 0.7rem; padding: 0.45rem 0.15rem; }
 }
 </style>

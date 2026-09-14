@@ -26,7 +26,6 @@ export const BASE_TEXT: Record<string, string> = {
   consumer: 'Service Consumer',
   verify_email: 'Verify Email',
   verify_phone: 'Verify Phone',
-  // Footer text: two balanced lines, keep the \n
   footer_text:
     'FDQ95 mobile - download our apps to\nenjoy affordable services from anywhere',
   app_store: 'Download on the App Store',
@@ -42,7 +41,6 @@ export const BASE_TEXT: Record<string, string> = {
   female: 'Female',
   other: 'Other',
 
-  // Provider hierarchy labels
   provider_level: 'Provider Level',
   level_0: 'System Administrator',
   level_1: 'National Administrator',
@@ -50,7 +48,6 @@ export const BASE_TEXT: Record<string, string> = {
   level_3: 'Sales Administrator',
   level_4: 'Service Provider',
 
-  // ---- Careers / Jobs ----
   careers: 'Careers',
   jobs_title: 'Job Openings',
   jobs_subtitle: 'Select a country and a job category to view open positions.',
@@ -72,8 +69,7 @@ export const BASE_TEXT: Record<string, string> = {
   submit_application: 'Submit Application',
   application_success: 'Application submitted successfully!',
   application_failed: 'Submission failed. Please try again.',
-  application_missing_fields:
-    'Please fill in all fields and attach a file.',
+  application_missing_fields: 'Please fill in all fields and attach a file.',
 
   // ---- Home page panels ----
   top_clicked_videos: 'Top Clicked Videos',
@@ -87,6 +83,39 @@ export const BASE_TEXT: Record<string, string> = {
   contact_us: 'Contact Us',
   introduction: 'Introduction',
   management_team: 'Management Team',
+  play_video: 'Play Video',
+
+  // ---- Video player page ----
+  tab_best: 'Best',
+  tab_latest: 'Latest',
+  tab_following: 'Following',
+  tab_recommended: 'Recommended',
+  tab_search: 'Search',
+  tab_settings: 'Settings',
+  search: 'Search',
+  search_placeholder: 'Search videos, creators, keywords…',
+  no_results: 'No results found.',
+  no_comments: 'No comments yet. Be the first!',
+  comment_placeholder: 'Write a comment…',
+  post_comment: 'Post',
+  comments: 'Comments',
+  share: 'Share',
+  copy_link: 'Copy Link',
+  link_copied: 'Link copied',
+  views: 'views',
+  publisher_profile: 'Publisher',
+  follow: 'Follow',
+  unfollow: 'Unfollow',
+  videos: 'videos',
+
+  // ---- Settings ----
+  display_name: 'Display Name',
+  user_id_label: 'User ID',
+  bio: 'Bio',
+  language: 'Language',
+  notifications: 'Enable notifications',
+  private_account: 'Private account',
+  save: 'Save',
 }
 
 export const LANGUAGES: Record<string, string> = {

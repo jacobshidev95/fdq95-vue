@@ -10,8 +10,11 @@ const i18n = useI18nStore()
 const auth = useAuthStore()
 const route = useRoute()
 
-// Home page uses a full-bleed 3-column layout (no padding).
+// Home uses full-bleed 3-column layout
 const isHome = computed(() => route.path === '/')
+
+// Video player + sub-pages hide header/footer for immersive full-screen
+const isVideoFullscreen = computed(() => route.path.startsWith('/videos'))
 
 onMounted(async () => {
   await i18n.init()
@@ -22,11 +25,20 @@ onMounted(async () => {
 </script>
 
 <template>
-  <AppHeader />
-  <main class="app-main" :class="{ 'app-main--full': isHome }">
+  <template v-if="!isVideoFullscreen">
+    <AppHeader />
+  </template>
+
+  <main
+    class="app-main"
+    :class="{ 'app-main--full': isHome, 'app-main--bare': isVideoFullscreen }"
+  >
     <router-view />
   </main>
-  <AppFooter />
+
+  <template v-if="!isVideoFullscreen">
+    <AppFooter />
+  </template>
 </template>
 
 <style scoped>
@@ -39,11 +51,14 @@ onMounted(async () => {
   padding: 3rem 1rem;
   min-height: 0;
 }
-
-/* Full-bleed variant used by the home page */
 .app-main--full {
   align-items: stretch;
   padding: 0;
+  overflow: hidden;
+}
+.app-main--bare {
+  padding: 0;
+  align-items: stretch;
   overflow: hidden;
 }
 
