@@ -116,6 +116,39 @@ export const BASE_TEXT: Record<string, string> = {
   notifications: 'Enable notifications',
   private_account: 'Private account',
   save: 'Save',
+    // ---- profile / messages / friends ----
+  personal_home: 'Personal Home',
+  video_list: 'Video List',
+  launch_activity: 'Launch Activity',
+  activity_replay: 'Activity Replay',
+  product_list: 'Product List',
+  friend_list: 'Friend List',
+  following: 'Following',
+  message: 'Message',
+  add_as_friend: 'Add as Friend',
+  friend_request_sent: 'Friend request sent',
+  friend_request_failed: 'Failed to send request',
+  no_friends_yet: 'No friends yet',
+  no_videos_yet: 'No videos yet',
+  no_activity_replays: 'No activity replays yet',
+  no_products_yet: 'No products yet',
+
+  // pull-down menu
+  recommend_to_wechat: 'Recommend to WeChat',
+  recommend_to_whatsapp: 'Recommend to WhatsApp',
+  recommend_whatsapp_text: 'Check out this profile on FDQ95',
+  complaint: 'Complaint',
+  complaint_requires_real_name: 'Only real-name verified users can file a complaint.',
+  cancel: 'Cancel',
+
+  // messages
+  msg_rule_hint: 'Until they reply, you can only send one message.',
+  message_placeholder: 'Write a message…',
+  wait_for_reply: 'Waiting for reply',
+  message_send_failed: 'Failed to send',
+  send: 'Send',
+  no_messages_yet: 'No messages yet',
+  upload_placeholder: 'Upload',
 }
 
 export const LANGUAGES: Record<string, string> = {

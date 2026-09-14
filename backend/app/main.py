@@ -7,12 +7,22 @@ from sqlalchemy import text
 from app.auth import auth_backend, fastapi_users
 from app.config import settings
 from app.database import Base, engine
-from app.routers import applications, jobs, translate
+from app.routers import (
+    activities,
+    applications,
+    friends,
+    follows,
+    jobs,
+    messages,
+    products,
+    profile,
+    translate,
+    videos,
+)
 from app.schemas import UserCreate, UserRead, UserUpdate
 
 
 async def _run_migrations() -> None:
-    """Idempotent DDL migrations for existing databases."""
     statements = [
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'health'",
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'tech'",
@@ -25,6 +35,7 @@ async def _run_migrations() -> None:
         ),
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_level provider_level",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS managed_by_id UUID",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now()",
     ]
     async with engine.connect() as conn:
         await conn.execution_options(isolation_level="AUTOCOMMIT")
@@ -43,7 +54,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="FDQ95 API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="FDQ95 API", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,11 +64,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# fastapi-users
+# auth
 app.include_router(
-    fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"],
+    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
 )
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
@@ -65,14 +74,10 @@ app.include_router(
     tags=["auth"],
 )
 app.include_router(
-    fastapi_users.get_verify_router(UserRead),
-    prefix="/auth",
-    tags=["auth"],
+    fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"]
 )
 app.include_router(
-    fastapi_users.get_reset_password_router(),
-    prefix="/auth",
-    tags=["auth"],
+    fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"]
 )
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
@@ -80,14 +85,19 @@ app.include_router(
     tags=["users"],
 )
 
-# translation proxy
+# domain routers
 app.include_router(translate.router, prefix="/api/translate", tags=["translate"])
-
-# jobs + applications
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(
     applications.router, prefix="/api/applications", tags=["applications"]
 )
+app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
+app.include_router(follows.router, prefix="/api/social", tags=["social"])
+app.include_router(friends.router, prefix="/api/friends", tags=["friends"])
+app.include_router(messages.router, prefix="/api/messages", tags=["messages"])
+app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
+app.include_router(products.router, prefix="/api/products", tags=["products"])
+app.include_router(activities.router, prefix="/api/activities", tags=["activities"])
 
 
 @app.get("/health")

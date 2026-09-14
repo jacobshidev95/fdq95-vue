@@ -3,10 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useProfileStore } from '@/stores/profile'
 import { AxiosError } from 'axios'
 
 const i18n = useI18nStore()
 const auth = useAuthStore()
+const profile = useProfileStore()
 const router = useRouter()
 
 const email = ref('')
@@ -27,13 +29,14 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(email.value, password.value)
-    router.push('/')
+    await profile.loadMe()
+    router.push('/profile')
   } catch (e) {
     const ax = e as AxiosError
     error.value =
       ax.response?.status === 400 || ax.response?.status === 401
         ? i18n.t('invalid_credentials')
-        : (ax.message || i18n.t('invalid_credentials'))
+        : ax.message || i18n.t('invalid_credentials')
   } finally {
     loading.value = false
   }

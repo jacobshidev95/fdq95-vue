@@ -1,7 +1,20 @@
 import enum
 import uuid
 
-from sqlalchemy import Boolean, Enum as SAEnum, ForeignKey, Integer, String, Uuid
+from datetime import datetime
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum as SAEnum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    func,
+    UniqueConstraint,
+    Index,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
@@ -9,6 +22,7 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 from app.database import Base
 
 
+# ---------------------------------------------------------------- enums
 class UserRole(str, enum.Enum):
     PROVIDER = "provider"
     CONSUMER = "consumer"
@@ -28,15 +42,6 @@ class ServiceCategory(str, enum.Enum):
 
 
 class ProviderLevel(str, enum.Enum):
-    """Hierarchy for service providers (lower number = higher rank).
-
-    level_0  System Administrator
-    level_1  National Administrator   (managed by level_0)
-    level_2  Regional Administrator   (managed by level_1)
-    level_3  Sales Administrator      (managed by level_2)
-    level_4  Service Provider         (managed by level_3)  <- default on register
-    """
-
     SYSTEM_ADMIN = "level_0"
     NATIONAL_ADMIN = "level_1"
     REGIONAL_ADMIN = "level_2"
@@ -44,6 +49,20 @@ class ProviderLevel(str, enum.Enum):
     PROVIDER = "level_4"
 
 
+class MessageType(str, enum.Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    VIDEO = "video"
+    VOICE = "voice"
+
+
+class RequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
+# ---------------------------------------------------------------- users
 class User(Base, SQLAlchemyBaseUserTableUUID):
     __tablename__ = "users"
 
@@ -61,7 +80,6 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
         nullable=True,
     )
 
-    # ---- provider hierarchy ----
     provider_level: Mapped[ProviderLevel | None] = mapped_column(
         SAEnum(ProviderLevel, name="provider_level"),
         nullable=True,
@@ -73,7 +91,255 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
         nullable=True,
     )
 
-    # ---- provider-only contact fields ----
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     real_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------- profile (user template)
+class Profile(Base):
+    """User template row created after email verification."""
+
+    __tablename__ = "profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    display_name: Mapped[str] = mapped_column(String(64), default="")
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    bio_line_1: Mapped[str] = mapped_column(String(160), default="")
+    bio_line_2: Mapped[str] = mapped_column(String(160), default="")
+    real_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------- videos
+class Video(Base):
+    """User-uploaded videos."""
+
+    __tablename__ = "videos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(200), default="")
+    url: Mapped[str] = mapped_column(String(512))
+    thumbnail_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    duration_sec: Mapped[int] = mapped_column(Integer, default=0)
+    views: Mapped[int] = mapped_column(Integer, default=0)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    hearts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class ActivityVideo(Base):
+    """Activity replay videos."""
+
+    __tablename__ = "activity_videos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+    )
+    activity_id: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    url: Mapped[str] = mapped_column(String(512))
+    thumbnail_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    duration_sec: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+# ---------------------------------------------------------------- social graph
+class Follow(Base):
+    """Who I follow (outgoing)."""
+
+    __tablename__ = "follows"
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_follow"),
+        Index("ix_follows_follower", "follower_id"),
+        Index("ix_follows_following", "following_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    follower_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    following_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class Follower(Base):
+    """Who follows me (incoming) — kept in sync with `follows`."""
+
+    __tablename__ = "followers"
+    __table_args__ = (
+        UniqueConstraint("user_id", "follower_id", name="uq_follower"),
+        Index("ix_followers_user", "user_id"),
+        Index("ix_followers_follower", "follower_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    follower_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------- direct messages
+class MessageInbox(Base):
+    """Messages I received."""
+
+    __tablename__ = "messages_inbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    recipient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    sender_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    content: Mapped[str] = mapped_column(Text, default="")
+    content_type: Mapped[MessageType] = mapped_column(
+        SAEnum(MessageType, name="message_type"), default=MessageType.TEXT
+    )
+    media_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class MessageOutbox(Base):
+    """Messages I sent."""
+
+    __tablename__ = "messages_outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sender_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    recipient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    content: Mapped[str] = mapped_column(Text, default="")
+    content_type: Mapped[MessageType] = mapped_column(
+        SAEnum(MessageType, name="message_type_out"), default=MessageType.TEXT
+    )
+    media_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+# ---------------------------------------------------------------- friend requests
+class FriendRequestInbox(Base):
+    """Friend requests I received."""
+
+    __tablename__ = "friend_requests_inbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    recipient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    sender_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[RequestStatus] = mapped_column(
+        SAEnum(RequestStatus, name="request_status_in"),
+        default=RequestStatus.PENDING,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class FriendRequestOutbox(Base):
+    """Friend requests I sent."""
+
+    __tablename__ = "friend_requests_outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    sender_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    recipient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[RequestStatus] = mapped_column(
+        SAEnum(RequestStatus, name="request_status_out"),
+        default=RequestStatus.PENDING,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------- friends
+class Friend(Base):
+    """Accepted friendships (row exists for both directions)."""
+
+    __tablename__ = "friends"
+    __table_args__ = (
+        UniqueConstraint("user_id", "friend_id", name="uq_friend"),
+        Index("ix_friends_user", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    friend_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
