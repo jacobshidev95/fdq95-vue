@@ -14,6 +14,10 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
+function close() {
+  router.push('/')
+}
+
 async function submit() {
   error.value = ''
   if (!email.value || !password.value) {
@@ -38,6 +42,8 @@ async function submit() {
 
 <template>
   <div class="card login-card">
+    <button class="close-btn" aria-label="Close" @click="close">×</button>
+
     <h2 class="title-gold card-title">{{ i18n.t('login') }}</h2>
 
     <div v-if="error" class="notice notice-error">{{ error }}</div>
@@ -46,8 +52,12 @@ async function submit() {
     <input v-model="email" type="email" autocomplete="email" />
 
     <label>{{ i18n.t('password') }}</label>
-    <input v-model="password" type="password" autocomplete="current-password"
-           @keyup.enter="submit" />
+    <input
+      v-model="password"
+      type="password"
+      autocomplete="current-password"
+      @keyup.enter="submit"
+    />
 
     <button class="btn btn-primary btn-block" :disabled="loading" @click="submit">
       {{ i18n.t('login') }}
@@ -61,6 +71,7 @@ async function submit() {
 
 <style scoped>
 .login-card {
+  position: relative;
   width: 100%;
   max-width: 420px;
 }
@@ -72,5 +83,21 @@ async function submit() {
   text-align: center;
   margin-top: 1rem;
   font-size: 0.9rem;
+}
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.75rem;
+  line-height: 1;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.close-btn:hover {
+  color: var(--gold);
 }
 </style>

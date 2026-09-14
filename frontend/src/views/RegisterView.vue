@@ -10,11 +10,18 @@ const router = useRouter()
 
 type Role = 'provider' | 'consumer'
 type Category =
-  | 'medical' | 'education' | 'entertainment' | 'travel'
-  | 'food' | 'clothing' | 'industry'
+  | 'medical'
+  | 'health'
+  | 'education'
+  | 'entertainment'
+  | 'travel'
+  | 'food'
+  | 'clothing'
+  | 'industry'
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'medical', label: 'Medical' },
+  { value: 'health', label: 'Health' },
   { value: 'education', label: 'Education' },
   { value: 'entertainment', label: 'Entertainment' },
   { value: 'travel', label: 'Travel' },
@@ -40,7 +47,11 @@ const error = ref('')
 const success = ref('')
 const loading = ref(false)
 
-// Single-selection behavior for checkboxes
+function close() {
+  router.push('/')
+}
+
+// 单选行为：勾选新的会自动取消旧的
 function toggleCategory(cat: Category, checked: boolean) {
   form.service_category = checked ? cat : null
 }
@@ -94,6 +105,8 @@ async function submit() {
 
 <template>
   <div class="card register-card">
+    <button class="close-btn" aria-label="Close" @click="close">×</button>
+
     <h2 class="title-gold card-title">{{ i18n.t('register') }}</h2>
 
     <div v-if="error" class="notice notice-error">{{ error }}</div>
@@ -126,19 +139,24 @@ async function submit() {
     <input v-model="form.country" type="text" />
 
     <label>{{ i18n.t('password') }} *</label>
-    <input v-model="form.password" type="password" autocomplete="new-password" />
+    <input
+      v-model="form.password"
+      type="password"
+      autocomplete="new-password"
+    />
 
     <label>{{ i18n.t('service_category') }} *</label>
     <div class="checkbox-grid">
-      <label
-        v-for="cat in CATEGORIES"
-        :key="cat.value"
-        class="checkbox-item"
-      >
+      <label v-for="cat in CATEGORIES" :key="cat.value" class="checkbox-item">
         <input
           type="checkbox"
           :checked="form.service_category === cat.value"
-          @change="toggleCategory(cat.value, ($event.target as HTMLInputElement).checked)"
+          @change="
+            toggleCategory(
+              cat.value,
+              ($event.target as HTMLInputElement).checked
+            )
+          "
         />
         <span>{{ cat.label }}</span>
       </label>
@@ -168,16 +186,19 @@ async function submit() {
 
 <style scoped>
 .register-card {
+  position: relative;
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
 }
 .card-title {
   text-align: center;
   margin: 0 0 1rem;
 }
+
+/* 8 checkboxes in 2 rows x 4 columns, aligned */
 .checkbox-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem 1rem;
   margin-top: 0.35rem;
 }
@@ -195,6 +216,18 @@ async function submit() {
   margin: 0;
   accent-color: var(--gold);
 }
+.checkbox-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .checkbox-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .submit-btn {
   margin-top: 1.5rem;
 }
@@ -202,5 +235,22 @@ async function submit() {
   text-align: center;
   margin-top: 1rem;
   font-size: 0.9rem;
+}
+
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.75rem;
+  line-height: 1;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.close-btn:hover {
+  color: var(--gold);
 }
 </style>

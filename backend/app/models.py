@@ -15,6 +15,7 @@ class UserRole(str, enum.Enum):
 
 class ServiceCategory(str, enum.Enum):
     MEDICAL = "medical"
+    HEALTH = "health"
     EDUCATION = "education"
     ENTERTAINMENT = "entertainment"
     TRAVEL = "travel"
