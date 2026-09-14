@@ -1,6 +1,7 @@
 import enum
+import uuid
 
-from sqlalchemy import Boolean, Enum as SAEnum, Integer, String
+from sqlalchemy import Boolean, Enum as SAEnum, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
@@ -24,6 +25,23 @@ class ServiceCategory(str, enum.Enum):
     INDUSTRY = "industry"
 
 
+class ProviderLevel(str, enum.Enum):
+    """Hierarchy for service providers (lower number = higher rank).
+
+    level_0  System Administrator
+    level_1  National Administrator   (managed by level_0)
+    level_2  Regional Administrator   (managed by level_1)
+    level_3  Sales Administrator      (managed by level_2)
+    level_4  Service Provider         (managed by level_3)  <- default on register
+    """
+
+    SYSTEM_ADMIN = "level_0"
+    NATIONAL_ADMIN = "level_1"
+    REGIONAL_ADMIN = "level_2"
+    SALES_ADMIN = "level_3"
+    PROVIDER = "level_4"
+
+
 class User(Base, SQLAlchemyBaseUserTableUUID):
     __tablename__ = "users"
 
@@ -41,6 +59,19 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
         nullable=True,
     )
 
+    # ---- provider hierarchy ----
+    provider_level: Mapped[ProviderLevel | None] = mapped_column(
+        SAEnum(ProviderLevel, name="provider_level"),
+        nullable=True,
+        default=None,
+    )
+    managed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # ---- provider-only contact fields ----
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     real_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -3,7 +3,8 @@ import { useI18nStore } from '@/stores/i18n'
 const i18n = useI18nStore()
 
 const appStoreUrl = 'https://apps.apple.com/app/fdq95'
-const googlePlayUrl = 'https://play.google.com/store/apps/details?id=com.fdq95'
+const googlePlayUrl =
+  'https://play.google.com/store/apps/details?id=com.fdq95'
 const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
 </script>
 
@@ -45,13 +46,20 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
   justify-content: center;
   gap: 1.5rem;
 }
+
+/* Two lines, same-ish length, both stretched edge-to-edge */
 .desc {
   margin: 0;
-  text-align: center;
-  font-size: 0.85rem;
-  line-height: 1.35;
+  width: 100%;
+  max-width: 420px;
+  text-align: justify;
+  text-align-last: justify;
   white-space: pre-line;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
 }
+
 .app-link {
   display: inline-flex;
   align-items: center;
@@ -65,5 +73,11 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
 }
 .icon {
   font-size: 1.05rem;
+}
+
+@media (max-width: 640px) {
+  .desc {
+    max-width: 100%;
+  }
 }
 </style>

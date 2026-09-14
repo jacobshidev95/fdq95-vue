@@ -21,8 +21,10 @@ export const BASE_TEXT: Record<string, string> = {
   consumer: 'Service Consumer',
   verify_email: 'Verify Email',
   verify_phone: 'Verify Phone',
+  // Footer text reformatted into two balanced lines (38 / 40 chars).
+  // Keep the literal \n so it stays two lines after translation.
   footer_text:
-    'FDQ95 mobile - download our apps\nto enjoy affordable services from anywhere',
+    'FDQ95 mobile - download our apps to\nenjoy affordable services from anywhere',
   app_store: 'Download on the App Store',
   google_play: 'Get it on Google Play',
   fdroid: 'Get it on F-Droid',
@@ -35,6 +37,14 @@ export const BASE_TEXT: Record<string, string> = {
   male: 'Male',
   female: 'Female',
   other: 'Other',
+
+  // Provider hierarchy labels
+  provider_level: 'Provider Level',
+  level_0: 'System Administrator',
+  level_1: 'National Administrator',
+  level_2: 'Regional Administrator',
+  level_3: 'Sales Administrator',
+  level_4: 'Service Provider',
 }
 
 export const LANGUAGES: Record<string, string> = {

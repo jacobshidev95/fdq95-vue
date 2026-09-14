@@ -10,6 +10,14 @@ export interface AppUser {
   country: string | null
   role: 'provider' | 'consumer'
   service_category: string | null
+  provider_level:
+    | 'level_0'
+    | 'level_1'
+    | 'level_2'
+    | 'level_3'
+    | 'level_4'
+    | null
+  managed_by_id: string | null
   phone: string | null
   real_name: string | null
   phone_verified: boolean

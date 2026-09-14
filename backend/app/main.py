@@ -11,28 +11,37 @@ from app.routers import translate
 from app.schemas import UserCreate, UserRead, UserUpdate
 
 
+async def _run_migrations() -> None:
+    """Idempotent DDL migrations for existing databases."""
+    statements = [
+        # service_category: add 'health'
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'health'",
+        # provider_level: create enum type if missing
+        (
+            "DO $$ BEGIN "
+            "  CREATE TYPE provider_level AS ENUM "
+            "    ('level_0','level_1','level_2','level_3','level_4'); "
+            "EXCEPTION WHEN duplicate_object THEN null; END $$;"
+        ),
+        # users: add new columns if missing
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_level provider_level",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS managed_by_id UUID",
+    ]
+    # AUTOCOMMIT is required for ALTER TYPE ... ADD VALUE
+    async with engine.connect() as conn:
+        await conn.execution_options(isolation_level="AUTOCOMMIT")
+        for stmt in statements:
+            try:
+                await conn.execute(text(stmt))
+            except Exception as e:  # noqa: BLE001
+                print(f"[startup] migration skipped: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1) create tables if missing
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # 2) ensure new enum values exist (idempotent, PostgreSQL 12+)
-    #    SQLAlchemy may store the enum member's name OR value depending on
-    #    configuration; try both to be safe.
-    for candidate in ("health", "HEALTH"):
-        try:
-            async with engine.connect() as conn:
-                await conn.execution_options(isolation_level="AUTOCOMMIT")
-                await conn.execute(
-                    text(
-                        f"ALTER TYPE service_category "
-                        f"ADD VALUE IF NOT EXISTS '{candidate}'"
-                    )
-                )
-        except Exception as e:  # noqa: BLE001
-            print(f"[startup] enum migration for '{candidate}': {e}")
-
+    await _run_migrations()
     yield
 
 

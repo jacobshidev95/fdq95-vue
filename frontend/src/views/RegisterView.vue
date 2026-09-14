@@ -51,7 +51,7 @@ function close() {
   router.push('/')
 }
 
-// 单选行为：勾选新的会自动取消旧的
+// Single-selection behavior for checkboxes
 function toggleCategory(cat: Category, checked: boolean) {
   form.service_category = checked ? cat : null
 }
@@ -82,6 +82,9 @@ async function submit() {
   if (form.role === 'provider') {
     payload.phone = form.phone || null
     payload.real_name = form.real_name || null
+    // All new providers start as level_4 (Service Provider).
+    // Promotions to level_0..3 happen later via admin actions.
+    payload.provider_level = 'level_4'
   }
 
   loading.value = true
@@ -195,7 +198,7 @@ async function submit() {
   margin: 0 0 1rem;
 }
 
-/* 8 checkboxes in 2 rows x 4 columns, aligned */
+/* 8 checkboxes in 2 rows x 4 columns */
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
