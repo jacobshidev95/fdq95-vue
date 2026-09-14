@@ -63,7 +63,6 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       localStorage.removeItem('fdq95_token')
     },
-    // ---- face recognition ----
     async enrollFace(credentialId: string) {
       await api.post('/api/auth/face/enroll', {
         face_credential_id: credentialId,

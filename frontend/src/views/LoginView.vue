@@ -5,7 +5,6 @@ import { useI18nStore } from '@/stores/i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { AxiosError } from 'axios'
-import { api } from '@/api/client'
 
 const i18n = useI18nStore()
 const auth = useAuthStore()
@@ -16,7 +15,10 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-const showFaceLogin = ref(false)
+
+// ---- face prompt dialog ----
+const showFacePrompt = ref(false)
+const dontShowAgain = ref(false)
 
 function close() {
   router.push('/')
@@ -32,7 +34,17 @@ async function submit() {
   try {
     await auth.login(email.value, password.value)
     await profile.loadMe()
-    router.push('/profile')
+
+    // Decide whether to show the face recognition prompt
+    const dismissed =
+      localStorage.getItem('fdq95_face_prompt_dismissed') === 'true'
+    const enrolled = auth.user?.face_enrolled ?? false
+
+    if (!enrolled && !dismissed) {
+      showFacePrompt.value = true
+    } else {
+      router.push('/profile')
+    }
   } catch (e) {
     const ax = e as AxiosError
     error.value =
@@ -44,21 +56,40 @@ async function submit() {
   }
 }
 
-async function faceLogin() {
-  error.value = ''
-  try {
-    // In production, integrate FaceIO / WebAuthn here.
-    const credentialId = prompt(i18n.t('face_login_prompt'))
-    if (!credentialId) return
-    const { data } = await api.post('/api/auth/face/login', {
-      face_credential_id: credentialId,
-    })
-    auth.token = data.access_token
-    localStorage.setItem('fdq95_token', data.access_token)
-    await profile.loadMe()
-    router.push('/profile')
-  } catch {
-    error.value = i18n.t('face_login_failed')
+function goForgotPassword() {
+  router.push('/forgot-password')
+}
+
+function goRegister() {
+  router.push('/register')
+}
+
+function goFaceRecognition() {
+  // If the user previously enrolled a face on this device → login,
+  // otherwise → go to the sampling page.
+  const cached = localStorage.getItem('fdq95_face_credential')
+  if (cached) {
+    router.push('/face/login')
+  } else {
+    router.push('/face/enroll')
+  }
+}
+
+function promptAdd() {
+  showFacePrompt.value = false
+  router.push('/face/enroll')
+}
+
+function promptCancel() {
+  showFacePrompt.value = false
+  router.push('/profile')
+}
+
+function onDontShowChange() {
+  if (dontShowAgain.value) {
+    localStorage.setItem('fdq95_face_prompt_dismissed', 'true')
+  } else {
+    localStorage.removeItem('fdq95_face_prompt_dismissed')
   }
 }
 </script>
@@ -66,6 +97,7 @@ async function faceLogin() {
 <template>
   <div class="card login-card">
     <button class="close-btn" aria-label="Close" @click="close">×</button>
+
     <h2 class="title-gold card-title">{{ i18n.t('login') }}</h2>
 
     <div v-if="error" class="notice notice-error">{{ error }}</div>
@@ -81,46 +113,156 @@ async function faceLogin() {
       @keyup.enter="submit"
     />
 
-    <button class="btn btn-primary btn-block" :disabled="loading" @click="submit">
+    <button
+      class="btn btn-primary btn-block login-btn"
+      :disabled="loading"
+      @click="submit"
+    >
       {{ i18n.t('login') }}
     </button>
 
-    <!-- ---- forgot password ---- -->
-    <p class="forgot-row">
-      <router-link to="/forgot-password" class="forgot-link">
+    <!-- Three equal-width auxiliary buttons -->
+    <div class="aux-actions">
+      <button class="btn btn-outline aux-btn" @click="goForgotPassword">
         {{ i18n.t('forgot_password') }}
-      </router-link>
-    </p>
-
-    <!-- ---- face recognition login ---- -->
-    <div class="face-login">
-      <button class="face-toggle" @click="showFaceLogin = !showFaceLogin">
-        {{ i18n.t('enable_face_login') }}
       </button>
-      <div v-if="showFaceLogin" class="face-panel">
-        <p class="face-hint">{{ i18n.t('face_login_hint') }}</p>
-        <button class="btn btn-outline btn-block" @click="faceLogin">
-          {{ i18n.t('face_login_button') }}
+      <button class="btn btn-outline aux-btn" @click="goRegister">
+        {{ i18n.t('register') }}
+      </button>
+      <button class="btn btn-outline aux-btn" @click="goFaceRecognition">
+        {{ i18n.t('face_recognition') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Face recognition prompt dialog -->
+  <div v-if="showFacePrompt" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">{{ i18n.t('face_recognition') }}</h3>
+      <p class="modal-message">{{ i18n.t('face_prompt_message') }}</p>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary modal-btn" @click="promptAdd">
+          {{ i18n.t('add') }}
+        </button>
+        <button class="btn btn-outline modal-btn" @click="promptCancel">
+          {{ i18n.t('cancel') }}
         </button>
       </div>
-    </div>
 
-    <p class="hint">
-      <router-link to="/register">{{ i18n.t('register') }}</router-link>
-    </p>
+      <label class="dont-show">
+        <input
+          type="checkbox"
+          v-model="dontShowAgain"
+          @change="onDontShowChange"
+        />
+        <span>{{ i18n.t('dont_show_again') }}</span>
+      </label>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.login-card { position: relative; width: 100%; max-width: 420px; }
-.card-title { text-align: center; margin: 0 0 1.25rem; }
-.hint { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
-.forgot-row { text-align: right; margin: 0.5rem 0 0; font-size: 0.85rem; }
-.forgot-link { color: var(--gold); }
-.face-login { margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem; }
-.face-toggle { background: transparent; border: none; color: var(--text-dim); font-size: 0.85rem; cursor: pointer; text-decoration: underline; }
-.face-panel { margin-top: 0.75rem; }
-.face-hint { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 0.5rem; }
-.close-btn { position: absolute; top: 0.5rem; right: 0.75rem; background: transparent; border: none; color: var(--text-dim); font-size: 1.75rem; cursor: pointer; }
-.close-btn:hover { color: var(--gold); }
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+}
+.card-title {
+  text-align: center;
+  margin: 0 0 1.25rem;
+}
+.login-btn {
+  margin-top: 1.25rem;
+}
+
+/* ---- three equal-width aux buttons ---- */
+.aux-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.aux-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.75rem;
+  line-height: 1;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.close-btn:hover {
+  color: var(--gold);
+}
+
+/* ---- modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+.modal-card {
+  background: #2a2a2a;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+}
+.modal-title {
+  color: var(--gold);
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+.modal-message {
+  color: var(--text);
+  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.modal-btn {
+  flex: 1 1 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+.dont-show {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 0;
+}
+.dont-show input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--gold);
+}
 </style>

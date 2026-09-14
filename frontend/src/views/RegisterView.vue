@@ -54,7 +54,6 @@ const success = ref('')
 const loading = ref(false)
 const checking = ref(false)
 
-// availability state
 const userIdAvailable = ref<boolean | null>(null)
 const emailAvailable = ref<boolean | null>(null)
 
@@ -75,7 +74,6 @@ function toggleCategory(cat: Category, checked: boolean) {
   form.service_category = checked ? cat : null
 }
 
-// ---- live availability check (debounced) ----
 let debounceTimer: number | null = null
 
 async function checkAvailability() {
@@ -122,13 +120,10 @@ async function submit() {
   error.value = ''
   success.value = ''
 
-  // ---- required fields ----
   if (!form.email || !form.password || !form.user_id) {
     error.value = i18n.t('please_fill_required')
     return
   }
-
-  // ---- two passwords must match ----
   if (form.password !== form.password_confirm) {
     error.value = i18n.t('passwords_do_not_match')
     return
@@ -137,14 +132,10 @@ async function submit() {
     error.value = i18n.t('password_too_short')
     return
   }
-
-  // ---- category required ----
   if (!form.service_category) {
     error.value = i18n.t('please_pick_one_category')
     return
   }
-
-  // ---- availability pre-check ----
   if (userIdAvailable.value === false) {
     error.value = i18n.t('user_id_taken')
     return
@@ -207,23 +198,18 @@ async function submit() {
       <option value="provider">{{ i18n.t('provider') }}</option>
     </select>
 
-    <!-- ---- first name / last name (blank; filled during KYC) ---- -->
     <label>{{ i18n.t('first_name') }}</label>
     <input v-model="form.first_name" type="text" autocomplete="given-name" />
 
     <label>{{ i18n.t('last_name') }}</label>
     <input v-model="form.last_name" type="text" autocomplete="family-name" />
 
-    <!-- ---- user id with availability ---- -->
     <label>{{ i18n.t('user_id') }} *</label>
     <input v-model="form.user_id" type="text" />
     <p
       v-if="form.user_id"
       class="field-hint"
-      :class="{
-        ok: userIdAvailable === true,
-        err: userIdAvailable === false,
-      }"
+      :class="{ ok: userIdAvailable === true, err: userIdAvailable === false }"
     >
       <template v-if="checking">… {{ i18n.t('checking') }}</template>
       <template v-else-if="userIdAvailable === false">
@@ -234,16 +220,12 @@ async function submit() {
       </template>
     </p>
 
-    <!-- ---- email with availability ---- -->
     <label>{{ i18n.t('email') }} *</label>
     <input v-model="form.email" type="email" autocomplete="email" />
     <p
       v-if="form.email"
       class="field-hint"
-      :class="{
-        ok: emailAvailable === true,
-        err: emailAvailable === false,
-      }"
+      :class="{ ok: emailAvailable === true, err: emailAvailable === false }"
     >
       <template v-if="checking">… {{ i18n.t('checking') }}</template>
       <template v-else-if="emailAvailable === false">
@@ -275,7 +257,6 @@ async function submit() {
       </option>
     </select>
 
-    <!-- ---- password (entered twice) ---- -->
     <label>{{ i18n.t('password') }} *</label>
     <input v-model="form.password" type="password" autocomplete="new-password" />
 
@@ -293,7 +274,6 @@ async function submit() {
       {{ passwordsMatch ? '✓ ' + i18n.t('passwords_match') : '✗ ' + i18n.t('passwords_do_not_match') }}
     </p>
 
-    <!-- ---- service category ---- -->
     <label>{{ i18n.t('service_category') }} *</label>
     <div class="checkbox-grid">
       <label v-for="cat in CATEGORIES" :key="cat.value" class="checkbox-item">
@@ -325,9 +305,7 @@ async function submit() {
     >
       {{ i18n.t('register') }}
     </button>
-    <p class="hint">
-      <router-link to="/login">{{ i18n.t('login') }}</router-link>
-    </p>
+    <!-- NOTE: the bottom "Login" link has been removed per requirement. -->
   </div>
 </template>
 
@@ -340,7 +318,10 @@ async function submit() {
   gap: 0.5rem 0.75rem;
   margin-top: 0.35rem;
 }
-.checkbox-item { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0; color: var(--text); cursor: pointer; user-select: none; }
+.checkbox-item {
+  display: inline-flex; align-items: center; gap: 0.4rem; margin: 0;
+  color: var(--text); cursor: pointer; user-select: none;
+}
 .checkbox-item input { width: auto; margin: 0; accent-color: var(--gold); }
 .checkbox-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .phone-row { display: flex; gap: 0.5rem; align-items: center; }
@@ -350,8 +331,11 @@ async function submit() {
 .field-hint.ok { color: #2ecc71; }
 .field-hint.err { color: #e74c3c; }
 .submit-btn { margin-top: 1.5rem; }
-.hint { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
-.close-btn { position: absolute; top: 0.5rem; right: 0.75rem; background: transparent; border: none; color: var(--text-dim); font-size: 1.75rem; cursor: pointer; }
+.close-btn {
+  position: absolute; top: 0.5rem; right: 0.75rem;
+  background: transparent; border: none; color: var(--text-dim);
+  font-size: 1.75rem; cursor: pointer;
+}
 .close-btn:hover { color: var(--gold); }
 @media (max-width: 720px) { .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .phone-row { flex-direction: column; align-items: stretch; } .dial-select { flex: 1; } }

@@ -177,13 +177,31 @@ export const BASE_TEXT: Record<string, string> = {
 
   // ---- face recognition ----
   enable_face_login: 'Enable Face Recognition Login',
-  face_login_hint:
-    'You can log in using your face instead of a password. This is optional.',
-  face_login_button: 'Log in with Face',
   face_login_prompt: 'Enter your face credential ID',
   face_login_failed: 'Face login failed. Please use your password.',
   face_enrolled: 'Face recognition is enabled for this account',
   disable_face: 'Disable Face Recognition',
+    // ---- face recognition (login dialog + pages) ----
+  face_recognition: 'Face Recognition',
+  face_prompt_message:
+    'Would you like to enable face recognition for faster login?',
+  add: 'Add',
+  dont_show_again: "Don't show this dialog again",
+  face_enroll_title: 'Setup Face Recognition',
+  face_enroll_hint:
+    'Position your face within the frame and capture samples to enable face login.',
+  face_enroll_success: 'Face recognition enabled successfully!',
+  face_enroll_failed: 'Failed to set up face recognition. Please try again.',
+  face_capture: 'Capture Face',
+  face_scanning: 'Scanning...',
+  continue_to_profile: 'Continue to Profile',
+  face_login_title: 'Face Login',
+  face_login_hint:
+    'Position your face within the frame to login with your face credential.',
+  face_login_button: 'Login with Face',
+  no_face_credential:
+    'No face credential found on this device. Please set up face recognition first.',
+  face_setup_link: 'Set up face recognition',
 }
 
 export const LANGUAGES: Record<string, string> = {

@@ -15,6 +15,8 @@ import UserVideosView from '@/views/UserVideosView.vue'
 import ActivityReplayView from '@/views/ActivityReplayView.vue'
 import ProductsView from '@/views/ProductsView.vue'
 import FriendsView from '@/views/FriendsView.vue'
+import FaceEnrollView from '@/views/FaceEnrollView.vue'
+import FaceLoginView from '@/views/FaceLoginView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -24,6 +26,10 @@ const router = createRouter({
     { path: '/register', name: 'register', component: RegisterView },
     { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
     { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
+
+    { path: '/face/enroll', name: 'face-enroll', component: FaceEnrollView },
+    { path: '/face/login', name: 'face-login', component: FaceLoginView },
+
     { path: '/jobs', name: 'jobs', component: JobsView },
     { path: '/videos', name: 'videos', component: VideoPlayerView },
     { path: '/videos/publisher/:id', name: 'publisher', component: PublisherView },
