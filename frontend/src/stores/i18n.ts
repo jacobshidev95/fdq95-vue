@@ -2,9 +2,10 @@ import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 
 export const BASE_TEXT: Record<string, string> = {
-  welcome_title: 'FDQ95',
+  welcome_title: 'FDQ95-Solutions for affordable services',
   welcome_desc:
     'Connect with trusted service providers across medical, education, entertainment, travel, food, clothing, and industry.',
+  home: 'Home',
   login: 'Login',
   register: 'Register',
   email: 'Email',
@@ -25,7 +26,7 @@ export const BASE_TEXT: Record<string, string> = {
   consumer: 'Service Consumer',
   verify_email: 'Verify Email',
   verify_phone: 'Verify Phone',
-  // Footer text: two balanced lines (38 / 40 chars), keep the \n
+  // Footer text: two balanced lines, keep the \n
   footer_text:
     'FDQ95 mobile - download our apps to\nenjoy affordable services from anywhere',
   app_store: 'Download on the App Store',

@@ -14,16 +14,23 @@ const i18n = useI18nStore()
 <style scoped>
 .home {
   text-align: center;
-  max-width: 720px;
+  max-width: 860px;
 }
 .hero-title {
-  font-size: 3rem;
+  font-size: 2.25rem;
   margin: 0 0 1rem;
+  line-height: 1.25;
+  letter-spacing: 0.05em;
 }
 .hero-desc {
   font-size: 1.1rem;
   line-height: 1.7;
   color: var(--text-dim);
   margin-bottom: 2rem;
+}
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 1.6rem;
+  }
 }
 </style>
