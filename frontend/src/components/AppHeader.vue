@@ -19,6 +19,10 @@ function goLogin() {
   router.push('/login')
 }
 
+function goJobs() {
+  router.push('/jobs')
+}
+
 function logout() {
   auth.logout()
   router.push('/')
@@ -43,13 +47,21 @@ function logout() {
         </option>
       </select>
 
-      <button v-if="!auth.isAuthenticated" class="btn btn-outline" @click="goLogin">
+      <button
+        v-if="!auth.isAuthenticated"
+        class="btn btn-outline"
+        @click="goLogin"
+      >
         {{ i18n.t('login') }}
       </button>
       <template v-else>
         <span class="user">{{ auth.user?.user_id || auth.user?.email }}</span>
         <button class="btn btn-outline" @click="logout">Logout</button>
       </template>
+
+      <button class="btn btn-outline" @click="goJobs">
+        {{ i18n.t('careers') }}
+      </button>
 
       <span class="date">{{ today }}</span>
     </div>

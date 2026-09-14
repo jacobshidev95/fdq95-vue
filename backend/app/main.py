@@ -7,29 +7,25 @@ from sqlalchemy import text
 from app.auth import auth_backend, fastapi_users
 from app.config import settings
 from app.database import Base, engine
-from app.routers import translate
+from app.routers import applications, jobs, translate
 from app.schemas import UserCreate, UserRead, UserUpdate
 
 
 async def _run_migrations() -> None:
     """Idempotent DDL migrations for existing databases."""
     statements = [
-        # service_category: add new values (safe to re-run)
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'health'",
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'tech'",
         "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'iot'",
-        # provider_level: create enum type if missing
         (
             "DO $$ BEGIN "
             "  CREATE TYPE provider_level AS ENUM "
             "    ('level_0','level_1','level_2','level_3','level_4'); "
             "EXCEPTION WHEN duplicate_object THEN null; END $$;"
         ),
-        # users: add new columns if missing
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_level provider_level",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS managed_by_id UUID",
     ]
-    # AUTOCOMMIT is required for ALTER TYPE ... ADD VALUE
     async with engine.connect() as conn:
         await conn.execution_options(isolation_level="AUTOCOMMIT")
         for stmt in statements:
@@ -86,6 +82,12 @@ app.include_router(
 
 # translation proxy
 app.include_router(translate.router, prefix="/api/translate", tags=["translate"])
+
+# jobs + applications
+app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+app.include_router(
+    applications.router, prefix="/api/applications", tags=["applications"]
+)
 
 
 @app.get("/health")

@@ -48,6 +48,31 @@ export const BASE_TEXT: Record<string, string> = {
   level_2: 'Regional Administrator',
   level_3: 'Sales Administrator',
   level_4: 'Service Provider',
+
+  // ---- Careers / Jobs ----
+  careers: 'Careers',
+  jobs_title: 'Job Openings',
+  jobs_subtitle: 'Select a country and a job category to view open positions.',
+  select_country: 'Country',
+  select_category: 'Job Category',
+  job_category_tech: 'Technology',
+  job_category_management: 'Management',
+  job_category_sales: 'Sales',
+  no_jobs_found: 'No jobs found for the selected criteria.',
+  please_select_filters: 'Please select both country and category.',
+  job_requirements: 'Requirements',
+  job_location: 'Location',
+  apply_now: 'Apply Now',
+  back_to_list: 'Back to job list',
+  apply_form_title: 'Apply for this position',
+  applicant_name: 'Your Name',
+  applicant_email: 'Your Email',
+  cover_letter_file: 'Resume / Cover Letter (PDF, DOC, DOCX, max 10 MB)',
+  submit_application: 'Submit Application',
+  application_success: 'Application submitted successfully!',
+  application_failed: 'Submission failed. Please try again.',
+  application_missing_fields:
+    'Please fill in all fields and attach a file.',
 }
 
 export const LANGUAGES: Record<string, string> = {

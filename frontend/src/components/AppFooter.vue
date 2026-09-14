@@ -38,24 +38,23 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
   padding: 1rem 1.25rem;
   color: var(--text-dim);
 }
+
+/* Row layout — no gap between items; spacing handled per-element
+   so we can set an exact 5px between the description and the first
+   App Store link. */
 .items {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 0.5rem 0; /* row-gap only; column spacing via margins */
 }
 
-/*
- * Two lines, both justified left & right:
- *  - text-align: justify makes all lines except the last stretch edge-to-edge
- *  - we deliberately DO NOT set text-align-last: justify
- *    (that was the cause of the over-stretched single-space gaps on line 2)
- *  - word-spacing: normal keeps single spaces between words
- */
+/* Two lines, first line justified, second line left-aligned with
+   single spaces between words. */
 .desc {
-  margin: 0;
+  margin: 0 5px 0 0; /* exactly 5px to the right (before App Store) */
   width: 100%;
   max-width: 430px;
   text-align: justify;
@@ -67,13 +66,20 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
   line-height: 1.5;
 }
 
+/* App Store / Google Play / F-Droid links */
 .app-link {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  margin-left: 20px; /* default spacing between app links */
   color: var(--gold);
   font-size: 0.85rem;
   white-space: nowrap;
+}
+/* The first .app-link (right after the description) gets zero extra
+   margin, so the only spacing to the description is the 5px above. */
+.app-link:first-of-type {
+  margin-left: 0;
 }
 .app-link:hover {
   color: var(--gold-hover);
@@ -85,6 +91,13 @@ const fdroidUrl = 'https://f-droid.org/packages/com.fdq95'
 @media (max-width: 640px) {
   .desc {
     max-width: 100%;
+    margin-right: 0;
+  }
+  .app-link {
+    margin-left: 12px;
+  }
+  .app-link:first-of-type {
+    margin-left: 12px;
   }
 }
 </style>
