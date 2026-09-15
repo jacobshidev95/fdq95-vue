@@ -43,8 +43,12 @@ async function submit() {
     <template v-else>
       <div v-if="error" class="notice notice-error">{{ error }}</div>
       <p class="desc">{{ i18n.t('forgot_password_desc') }}</p>
-      <label>{{ i18n.t('email') }}</label>
-      <input v-model="email" type="email" @keyup.enter="submit" />
+      <input
+        v-model="email"
+        type="email"
+        autocomplete="email"
+        @keyup.enter="submit"
+      />
       <button class="btn btn-primary btn-block" :disabled="loading" @click="submit">
         {{ i18n.t('send_reset_link') }}
       </button>
@@ -59,7 +63,12 @@ async function submit() {
 <style scoped>
 .forgot-card { position: relative; width: 100%; max-width: 420px; }
 .card-title { text-align: center; margin: 0 0 1.25rem; }
-.desc { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+.desc { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; margin: 0 0 0.5rem; }
 .hint { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
-.close-btn { position: absolute; top: 0.5rem; right: 0.75rem; background: transparent; border: none; color: var(--text-dim); font-size: 1.75rem; cursor: pointer; }
+.close-btn {
+  position: absolute; top: 0.5rem; right: 0.75rem;
+  background: transparent; border: none; color: var(--text-dim);
+  font-size: 1.75rem; cursor: pointer;
+}
+.close-btn:hover { color: var(--gold); }
 </style>

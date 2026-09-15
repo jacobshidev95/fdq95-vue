@@ -65,8 +65,6 @@ function goRegister() {
 }
 
 function goFaceRecognition() {
-  // If the user previously enrolled a face on this device → login,
-  // otherwise → go to the sampling page.
   const cached = localStorage.getItem('fdq95_face_credential')
   if (cached) {
     router.push('/face/login')
@@ -163,10 +161,11 @@ function onDontShowChange() {
 </template>
 
 <style scoped>
+/* Card width increased from 420px to 480px (+60px) */
 .login-card {
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
 }
 .card-title {
   text-align: center;
@@ -176,7 +175,8 @@ function onDontShowChange() {
   margin-top: 1.25rem;
 }
 
-/* ---- three equal-width aux buttons ---- */
+/* Three equal-width aux buttons; flex: 1 1 0 makes each
+   one share the extra 60px equally (≈ +20px per button). */
 .aux-actions {
   display: flex;
   gap: 0.5rem;
