@@ -35,7 +35,6 @@ async function submit() {
     await auth.login(email.value, password.value)
     await profile.loadMe()
 
-    // Decide whether to show the face recognition prompt
     const dismissed =
       localStorage.getItem('fdq95_face_prompt_dismissed') === 'true'
     const enrolled = auth.user?.face_enrolled ?? false
@@ -161,12 +160,14 @@ function onDontShowChange() {
 </template>
 
 <style scoped>
-/* Card width increased from 420px to 480px (+60px) */
+/* ▼▼▼ Width increased from 420px to 480px (+60px) ▼▼▼ */
 .login-card {
   position: relative;
   width: 100%;
   max-width: 480px;
 }
+/* ▲▲▲ */
+
 .card-title {
   text-align: center;
   margin: 0 0 1.25rem;
@@ -175,8 +176,9 @@ function onDontShowChange() {
   margin-top: 1.25rem;
 }
 
-/* Three equal-width aux buttons; flex: 1 1 0 makes each
-   one share the extra 60px equally (≈ +20px per button). */
+/* Three equal-width aux buttons.
+   flex: 1 1 0 makes each button share the extra 60px equally
+   (≈ +20px per button at 480px card width). */
 .aux-actions {
   display: flex;
   gap: 0.5rem;

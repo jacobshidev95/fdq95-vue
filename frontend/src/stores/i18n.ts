@@ -19,6 +19,7 @@ export const BASE_TEXT: Record<string, string> = {
   phone_code: 'Code',
   first_name: 'First Name',
   family_name: 'Family Name',
+  last_name: 'Last Name',
   real_name: 'Real Name',
   service_category: 'Service Category',
   account_type: 'Account Type',
@@ -116,14 +117,14 @@ export const BASE_TEXT: Record<string, string> = {
   notifications: 'Enable notifications',
   private_account: 'Private account',
   save: 'Save',
-    // ---- profile / messages / friends ----
+
+  // ---- profile / messages / friends ----
   personal_home: 'Personal Home',
   video_list: 'Video List',
   launch_activity: 'Launch Activity',
   activity_replay: 'Activity Replay',
   product_list: 'Product List',
   friend_list: 'Friend List',
-  following: 'Following',
   message: 'Message',
   add_as_friend: 'Add as Friend',
   friend_request_sent: 'Friend request sent',
@@ -133,15 +134,14 @@ export const BASE_TEXT: Record<string, string> = {
   no_activity_replays: 'No activity replays yet',
   no_products_yet: 'No products yet',
 
-  // pull-down menu
   recommend_to_wechat: 'Recommend to WeChat',
   recommend_to_whatsapp: 'Recommend to WhatsApp',
   recommend_whatsapp_text: 'Check out this profile on FDQ95',
   complaint: 'Complaint',
-  complaint_requires_real_name: 'Only real-name verified users can file a complaint.',
+  complaint_requires_real_name:
+    'Only real-name verified users can file a complaint.',
   cancel: 'Cancel',
 
-  // messages
   msg_rule_hint: 'Until they reply, you can only send one message.',
   message_placeholder: 'Write a message…',
   wait_for_reply: 'Waiting for reply',
@@ -149,7 +149,8 @@ export const BASE_TEXT: Record<string, string> = {
   send: 'Send',
   no_messages_yet: 'No messages yet',
   upload_placeholder: 'Upload',
-    // ---- registration v2 ----
+
+  // ---- registration v2 ----
   password_confirm: 'Confirm Password',
   passwords_do_not_match: 'Passwords do not match',
   passwords_match: 'Passwords match',
@@ -163,8 +164,9 @@ export const BASE_TEXT: Record<string, string> = {
 
   // ---- forgot / reset password ----
   forgot_password: 'Forgot Password?',
-  forgot_password_desc:
-    'Enter your email address and we will send you a link to reset your password.',
+  // ▼▼▼ UPDATED to match requirement ▼▼▼
+  forgot_password_desc: 'Enter your email address below:',
+  // ▲▲▲
   send_reset_link: 'Send Reset Link',
   reset_link_sent:
     'If that email exists, a password reset link has been sent. Check your inbox.',
@@ -176,12 +178,6 @@ export const BASE_TEXT: Record<string, string> = {
   back_to_login: 'Back to Login',
 
   // ---- face recognition ----
-  enable_face_login: 'Enable Face Recognition Login',
-  face_login_prompt: 'Enter your face credential ID',
-  face_login_failed: 'Face login failed. Please use your password.',
-  face_enrolled: 'Face recognition is enabled for this account',
-  disable_face: 'Disable Face Recognition',
-    // ---- face recognition (login dialog + pages) ----
   face_recognition: 'Face Recognition',
   face_prompt_message:
     'Would you like to enable face recognition for faster login?',
@@ -197,11 +193,16 @@ export const BASE_TEXT: Record<string, string> = {
   continue_to_profile: 'Continue to Profile',
   face_login_title: 'Face Login',
   face_login_hint:
-    'Position your face within the frame to login with your face credential.',
-  face_login_button: 'Login with Face',
+    'Position your face within the frame to log in with your face credential.',
+  face_login_button: 'Scan Face',
   no_face_credential:
     'No face credential found on this device. Please set up face recognition first.',
   face_setup_link: 'Set up face recognition',
+  enable_face_login: 'Enable Face Recognition Login',
+  face_login_prompt: 'Enter your face credential ID',
+  face_login_failed: 'Face login failed. Please use your password.',
+  face_enrolled: 'Face recognition is enabled for this account',
+  disable_face: 'Disable Face Recognition',
 }
 
 export const LANGUAGES: Record<string, string> = {
