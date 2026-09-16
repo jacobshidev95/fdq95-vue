@@ -70,14 +70,14 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     gender: Mapped[str | None] = mapped_column(String(16), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     country: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # NEW: sub-national region, used for regional admin scope
+    region: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
-    # ---- real name (filled later during identity verification) ----
     first_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     real_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     real_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # ---- face recognition (optional auxiliary login) ----
     face_enrolled: Mapped[bool] = mapped_column(Boolean, default=False)
     face_credential_id: Mapped[str | None] = mapped_column(
         String(256), nullable=True
@@ -102,6 +102,17 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # NEW: admin scope (only meaningful when provider_level is level_0/1/2)
+    admin_scope_country: Mapped[str | None] = mapped_column(
+        String(8), nullable=True, index=True
+    )
+    admin_scope_region: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+
+    # NEW: account freeze flag
+    is_frozen: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -133,6 +144,9 @@ class Profile(Base):
     )
 
 
+# 其余表（Video / ActivityVideo / Follow / Follower / MessageInbox /
+# MessageOutbox / FriendRequestInbox / FriendRequestOutbox / Friend）
+# 保持原有定义不变
 class Video(Base):
     __tablename__ = "videos"
 
@@ -140,9 +154,7 @@ class Video(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(200), default="")
     url: Mapped[str] = mapped_column(String(512))
@@ -163,9 +175,7 @@ class ActivityVideo(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     activity_id: Mapped[str] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(200), default="")
@@ -181,8 +191,6 @@ class Follow(Base):
     __tablename__ = "follows"
     __table_args__ = (
         UniqueConstraint("follower_id", "following_id", name="uq_follow"),
-        Index("ix_follows_follower", "follower_id"),
-        Index("ix_follows_following", "following_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -203,8 +211,6 @@ class Follower(Base):
     __tablename__ = "followers"
     __table_args__ = (
         UniqueConstraint("user_id", "follower_id", name="uq_follower"),
-        Index("ix_followers_user", "user_id"),
-        Index("ix_followers_follower", "follower_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -313,7 +319,6 @@ class Friend(Base):
     __tablename__ = "friends"
     __table_args__ = (
         UniqueConstraint("user_id", "friend_id", name="uq_friend"),
-        Index("ix_friends_user", "user_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

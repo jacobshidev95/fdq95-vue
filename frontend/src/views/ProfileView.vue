@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '@/api/client'
 import { useProfileStore } from '@/stores/profile'
 import { useAuthStore } from '@/stores/auth'
 import { useI18nStore } from '@/stores/i18n'
@@ -25,6 +24,13 @@ const avatarHue = computed(() => {
   return h
 })
 
+const isAdmin = computed(
+  () =>
+    auth.user?.provider_level === 'level_0' ||
+    auth.user?.provider_level === 'level_1' ||
+    auth.user?.provider_level === 'level_2',
+)
+
 async function load() {
   if (!store.me) await store.loadMe()
   if (targetUserId.value && !isSelf.value) {
@@ -38,9 +44,7 @@ onMounted(load)
 watch(targetUserId, load)
 
 function goMessages() {
-  const id = isSelf.value
-    ? store.me?.user_string_id
-    : store.viewing?.user_string_id
+  const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/messages/${id}`)
 }
 
@@ -49,28 +53,26 @@ function goFriendList() {
 }
 
 function goUserVideos() {
-  const id = isSelf.value
-    ? store.me?.user_string_id
-    : store.viewing?.user_string_id
+  const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/videos`)
 }
 
 function goActivityReplay() {
-  const id = isSelf.value
-    ? store.me?.user_string_id
-    : store.viewing?.user_string_id
+  const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/activity-replay`)
 }
 
 function goProducts() {
-  const id = isSelf.value
-    ? store.me?.user_string_id
-    : store.viewing?.user_string_id
+  const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/products`)
 }
 
 function goLaunchActivity() {
   router.push('/activities/new')
+}
+
+function goAdminUsers() {
+  router.push('/admin/users')
 }
 
 async function addFriend() {
@@ -114,7 +116,6 @@ function complaint() {
 
 <template>
   <div class="profile-page">
-    <!-- ---------- Top: avatar + ID, top-right pull-down menu ---------- -->
     <div class="profile-header">
       <div class="avatar-block">
         <div
@@ -122,8 +123,7 @@ function complaint() {
           :style="{ background: `hsl(${avatarHue},60%,45%)` }"
         >
           {{
-            (isSelf ? store.me : store.viewing)?.user_string_id?.slice(-2) ||
-            '??'
+            (isSelf ? store.me : store.viewing)?.user_string_id?.slice(-2) || '??'
           }}
         </div>
         <div class="id-block">
@@ -149,15 +149,17 @@ function complaint() {
       </div>
     </div>
 
-    <!-- ---------- Two bio lines ---------- -->
     <div class="bio">
       <p class="bio-line">{{ (isSelf ? store.me : store.viewing)?.bio_line_1 }}</p>
       <p class="bio-line">{{ (isSelf ? store.me : store.viewing)?.bio_line_2 }}</p>
     </div>
 
-    <!-- ---------- Follow + Message (equal width) ---------- -->
     <div v-if="!isSelf" class="action-row">
-      <button class="btn action-btn" :class="{ active: store.following }" @click="store.toggleFollow()">
+      <button
+        class="btn action-btn"
+        :class="{ active: store.following }"
+        @click="store.toggleFollow()"
+      >
         {{ store.following ? i18n.t('following') : i18n.t('follow') }}
       </button>
       <button class="btn action-btn" @click="goMessages">
@@ -165,7 +167,6 @@ function complaint() {
       </button>
     </div>
 
-    <!-- ---------- Add friend (same width as the two above combined) ---------- -->
     <button
       v-if="!isSelf"
       class="btn btn-primary add-friend-btn"
@@ -174,7 +175,6 @@ function complaint() {
       {{ i18n.t('add_as_friend') }}
     </button>
 
-    <!-- ---------- Navigation ---------- -->
     <nav class="nav-grid">
       <button class="nav-tile" @click="router.push('/profile')">
         🏠 {{ i18n.t('personal_home') }}
@@ -194,6 +194,13 @@ function complaint() {
       <button class="nav-tile" @click="goFriendList">
         👥 {{ i18n.t('friend_list') }}
       </button>
+      <button
+        v-if="isAdmin"
+        class="nav-tile admin-tile"
+        @click="goAdminUsers"
+      >
+        🛡️ {{ i18n.t('admin_users_title') }}
+      </button>
     </nav>
   </div>
 </template>
@@ -205,7 +212,6 @@ function complaint() {
   padding: 1rem 1.25rem 3rem;
 }
 
-/* ---------- header ---------- */
 .profile-header {
   display: flex;
   justify-content: space-between;
@@ -239,7 +245,6 @@ function complaint() {
   font-size: 0.85rem;
 }
 
-/* ---------- pull-down menu ---------- */
 .menu-wrap {
   position: relative;
 }
@@ -296,7 +301,6 @@ function complaint() {
   transform: translateY(-6px);
 }
 
-/* ---------- bio ---------- */
 .bio {
   margin-bottom: 1rem;
 }
@@ -306,7 +310,6 @@ function complaint() {
   margin: 0.15rem 0;
 }
 
-/* ---------- action row ---------- */
 .action-row {
   display: flex;
   gap: 0.6rem;
@@ -336,7 +339,6 @@ function complaint() {
   border-radius: 8px;
 }
 
-/* ---------- nav grid ---------- */
 .nav-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -355,6 +357,11 @@ function complaint() {
 }
 .nav-tile:hover {
   border-color: var(--gold);
+  color: var(--gold);
+}
+.nav-tile.admin-tile {
+  border-color: rgba(229, 184, 11, 0.5);
+  background: rgba(229, 184, 11, 0.06);
   color: var(--gold);
 }
 

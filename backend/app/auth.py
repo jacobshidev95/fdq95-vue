@@ -20,6 +20,26 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = settings.SECRET_KEY
     verification_token_secret = settings.SECRET_KEY
 
+    # ----------------------------------------------------------------
+    # NEW: reject frozen accounts at login time
+    # ----------------------------------------------------------------
+    async def authenticate(self, credentials):
+        """Override the default authenticate to block frozen accounts.
+
+        When the account is frozen we return None, which makes
+        fastapi-users respond with the standard 400 "Invalid credentials"
+        message. This avoids telling attackers that the account exists.
+        """
+        user = await super().authenticate(credentials)
+        if user is None:
+            return None
+        if getattr(user, "is_frozen", False):
+            print(f"[AUTH] login blocked — frozen account {user.user_id}")
+            return None
+        return user
+
+    # ----------------------------------------------------------------
+
     async def create(self, user_create, safe: bool = False, request=None) -> User:
         role = getattr(user_create, "role", UserRole.CONSUMER)
         level = getattr(user_create, "provider_level", None)
@@ -45,10 +65,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         async with async_session_maker() as session:
             try:
                 profile = await create_profile_for_user(session, user)
-                print(
-                    f"[AUTH] profile created for user={user.id} "
-                    f"profile={profile.id}"
-                )
+                print(f"[AUTH] profile created for user={user.id} profile={profile.id}")
             except Exception as e:
                 print(f"[AUTH] profile creation failed: {e}")
 

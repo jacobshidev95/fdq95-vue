@@ -17,6 +17,7 @@ import ProductsView from '@/views/ProductsView.vue'
 import FriendsView from '@/views/FriendsView.vue'
 import FaceEnrollView from '@/views/FaceEnrollView.vue'
 import FaceLoginView from '@/views/FaceLoginView.vue'
+import AdminUsersView from '@/views/AdminUsersView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -41,6 +42,9 @@ const router = createRouter({
     { path: '/user/:userId/activity-replay', name: 'user-activity-replay', component: ActivityReplayView },
     { path: '/user/:userId/products', name: 'user-products', component: ProductsView },
     { path: '/friends', name: 'friends', component: FriendsView },
+
+    // admin
+    { path: '/admin/users', name: 'admin-users', component: AdminUsersView },
   ],
 })
 

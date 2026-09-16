@@ -8,6 +8,7 @@ export interface AppUser {
   gender: string | null
   age: number | null
   country: string | null
+  region: string | null
   first_name: string | null
   last_name: string | null
   real_name: string | null
@@ -18,6 +19,9 @@ export interface AppUser {
   provider_level:
     | 'level_0' | 'level_1' | 'level_2' | 'level_3' | 'level_4' | null
   managed_by_id: string | null
+  admin_scope_country: string | null
+  admin_scope_region: string | null
+  is_frozen: boolean
   phone: string | null
   phone_verified: boolean
   is_verified: boolean
@@ -36,6 +40,10 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (s) => !!s.token,
+    isAdmin: (s) =>
+      s.user?.provider_level === 'level_0' ||
+      s.user?.provider_level === 'level_1' ||
+      s.user?.provider_level === 'level_2',
   },
   actions: {
     async login(email: string, password: string) {

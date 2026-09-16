@@ -18,6 +18,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    region: str | None = None
     first_name: str | None = None
     last_name: str | None = None
     real_name: str | None = None
@@ -27,6 +28,9 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     service_category: ServiceCategory | None = None
     provider_level: ProviderLevel | None = None
     managed_by_id: uuid.UUID | None = None
+    admin_scope_country: str | None = None
+    admin_scope_region: str | None = None
+    is_frozen: bool = False
     phone: str | None = None
     phone_verified: bool = False
     created_at: datetime | None = None
@@ -37,6 +41,7 @@ class UserCreate(schemas.BaseUserCreate):
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    region: str | None = None
     first_name: str | None = None
     last_name: str | None = None
     role: UserRole = UserRole.CONSUMER
@@ -44,19 +49,12 @@ class UserCreate(schemas.BaseUserCreate):
     provider_level: ProviderLevel | None = None
     phone: str | None = None
 
-    @field_validator("user_id")
-    @classmethod
-    def validate_user_id(cls, v: str) -> str:
-        v = v.strip()
-        if not v.isalnum() and not all(c.isalnum() or c in "_-" for c in v):
-            raise ValueError("User ID must be alphanumeric (underscore/hyphen allowed)")
-        return v
-
 
 class UserUpdate(schemas.BaseUserUpdate):
     gender: str | None = None
     age: int | None = None
     country: str | None = None
+    region: str | None = None
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
@@ -148,7 +146,6 @@ class FriendRead(BaseModel):
     avatar_url: str | None
 
 
-# ---- availability check ----
 class AvailabilityCheck(BaseModel):
     user_id: str | None = None
     email: str | None = None
@@ -160,7 +157,6 @@ class AvailabilityResult(BaseModel):
     available: bool = True
 
 
-# ---- face recognition ----
 class FaceEnrollRequest(BaseModel):
     face_credential_id: str = Field(..., min_length=8, max_length=256)
 
@@ -169,7 +165,6 @@ class FaceLoginRequest(BaseModel):
     face_credential_id: str = Field(..., min_length=8, max_length=256)
 
 
-# ---- password reset ----
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -177,3 +172,37 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     password: str = Field(..., min_length=8)
+
+
+# ---------------- admin ----------------
+class AdminUserRow(BaseModel):
+    id: uuid.UUID
+    email: str
+    user_id: str
+    first_name: str | None
+    last_name: str | None
+    country: str | None
+    region: str | None
+    role: UserRole
+    provider_level: ProviderLevel | None
+    admin_scope_country: str | None
+    admin_scope_region: str | None
+    is_frozen: bool
+    is_active: bool
+    is_verified: bool
+    created_at: datetime | None
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    users: list[AdminUserRow]
+
+
+class AdminActionResponse(BaseModel):
+    ok: bool
+    detail: str = ""

@@ -203,6 +203,33 @@ export const BASE_TEXT: Record<string, string> = {
   face_login_failed: 'Face login failed. Please use your password.',
   face_enrolled: 'Face recognition is enabled for this account',
   disable_face: 'Disable Face Recognition',
+    // ---- admin ----
+  admin_users_title: 'User Management',
+  admin_no_access: 'You do not have administrator access.',
+  admin_scope_global: 'Scope: Global (all users)',
+  admin_scope_country: 'Scope: Country',
+  admin_scope_region: 'Scope: Region',
+  admin_search_placeholder: 'Search by User ID or Email',
+  admin_all_accounts: 'All accounts',
+  admin_only_frozen: 'Frozen only',
+  admin_only_active: 'Active only',
+  admin_actions: 'Actions',
+  admin_freeze: 'Freeze',
+  admin_unfreeze: 'Unfreeze',
+  admin_delete: 'Delete',
+  admin_status_active: 'Active',
+  admin_status_frozen: 'Frozen',
+  admin_total_users: 'users total',
+  admin_no_users: 'No users match the current filters.',
+  admin_load_failed: 'Failed to load users.',
+  admin_action_failed: 'Action failed. Please try again.',
+  admin_confirm_freeze: 'Freeze account',
+  admin_confirm_delete: 'Permanently delete account',
+  admin_delete_warning:
+    'This will delete the account and ALL associated data (videos, messages, friendships, follows). This cannot be undone.',
+  admin_frozen: 'Frozen:',
+  admin_unfrozen: 'Unfrozen:',
+  admin_deleted: 'Deleted:',
 }
 
 export const LANGUAGES: Record<string, string> = {
