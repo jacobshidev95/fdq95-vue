@@ -17,7 +17,8 @@ import ProductsView from '@/views/ProductsView.vue'
 import FriendsView from '@/views/FriendsView.vue'
 import FaceEnrollView from '@/views/FaceEnrollView.vue'
 import FaceLoginView from '@/views/FaceLoginView.vue'
-import AdminUsersView from '@/views/AdminUsersView.vue'
+import AdminLoginView from '@/views/AdminLoginView.vue'
+import AdminDashboardView from '@/views/AdminDashboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -43,8 +44,11 @@ const router = createRouter({
     { path: '/user/:userId/products', name: 'user-products', component: ProductsView },
     { path: '/friends', name: 'friends', component: FriendsView },
 
-    // admin
-    { path: '/admin/users', name: 'admin-users', component: AdminUsersView },
+    // ---- admin portal ----
+    { path: '/admin/login', name: 'admin-login', component: AdminLoginView },
+    { path: '/admin/dashboard', name: 'admin-dashboard', component: AdminDashboardView },
+    // legacy redirect
+    { path: '/admin/users', redirect: '/admin/dashboard' },
   ],
 })
 

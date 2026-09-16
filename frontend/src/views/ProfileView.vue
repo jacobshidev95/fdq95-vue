@@ -72,7 +72,7 @@ function goLaunchActivity() {
 }
 
 function goAdminUsers() {
-  router.push('/admin/users')
+  router.push('/admin/dashboard')
 }
 
 async function addFriend() {

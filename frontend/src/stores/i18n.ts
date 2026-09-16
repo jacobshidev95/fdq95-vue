@@ -204,11 +204,15 @@ export const BASE_TEXT: Record<string, string> = {
   face_enrolled: 'Face recognition is enabled for this account',
   disable_face: 'Disable Face Recognition',
     // ---- admin ----
+  admin_scope_global: 'Scope: Global (all users)',
+  admin_portal: 'Admin Portal',
+  admin_login_subtitle: 'Sign in with your administrator account',
+  password_login: 'Password',
+  admin_scope_country: 'Country',
+  admin_scope_region: 'Region',
+  admin_scope_global_short: 'Global',
   admin_users_title: 'User Management',
   admin_no_access: 'You do not have administrator access.',
-  admin_scope_global: 'Scope: Global (all users)',
-  admin_scope_country: 'Scope: Country',
-  admin_scope_region: 'Scope: Region',
   admin_search_placeholder: 'Search by User ID or Email',
   admin_all_accounts: 'All accounts',
   admin_only_frozen: 'Frozen only',
@@ -217,6 +221,10 @@ export const BASE_TEXT: Record<string, string> = {
   admin_freeze: 'Freeze',
   admin_unfreeze: 'Unfreeze',
   admin_delete: 'Delete',
+  admin_create: 'Create Admin',
+  admin_created: 'Administrator created',
+  admin_create_failed: 'Failed to create administrator',
+  admin_status: 'Status',
   admin_status_active: 'Active',
   admin_status_frozen: 'Frozen',
   admin_total_users: 'users total',
@@ -226,10 +234,11 @@ export const BASE_TEXT: Record<string, string> = {
   admin_confirm_freeze: 'Freeze account',
   admin_confirm_delete: 'Permanently delete account',
   admin_delete_warning:
-    'This will delete the account and ALL associated data (videos, messages, friendships, follows). This cannot be undone.',
+    'This will delete the account and ALL associated data. This cannot be undone.',
   admin_frozen: 'Frozen:',
   admin_unfrozen: 'Unfrozen:',
   admin_deleted: 'Deleted:',
+  logout: 'Logout',
 }
 
 export const LANGUAGES: Record<string, string> = {

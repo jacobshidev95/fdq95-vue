@@ -147,7 +147,6 @@ app.include_router(activities.router, prefix="/api/activities", tags=["activitie
 # admin
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
-
 @app.get("/health")
 async def health():
     return {"status": "ok"}

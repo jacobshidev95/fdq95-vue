@@ -172,37 +172,3 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     password: str = Field(..., min_length=8)
-
-
-# ---------------- admin ----------------
-class AdminUserRow(BaseModel):
-    id: uuid.UUID
-    email: str
-    user_id: str
-    first_name: str | None
-    last_name: str | None
-    country: str | None
-    region: str | None
-    role: UserRole
-    provider_level: ProviderLevel | None
-    admin_scope_country: str | None
-    admin_scope_region: str | None
-    is_frozen: bool
-    is_active: bool
-    is_verified: bool
-    created_at: datetime | None
-
-    class Config:
-        from_attributes = True
-
-
-class AdminUserListResponse(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    users: list[AdminUserRow]
-
-
-class AdminActionResponse(BaseModel):
-    ok: bool
-    detail: str = ""
