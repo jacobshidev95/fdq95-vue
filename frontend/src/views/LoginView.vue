@@ -35,21 +35,16 @@ async function submit() {
     await auth.login(email.value, password.value)
     await profile.loadMe()
 
-    // ==== NEW: admin short-circuit ====
-    const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
-    const level = auth.user?.provider_level || ''
-    if (ADMIN_LEVELS.includes(level)) {
-      // Admin → go straight to the admin dashboard
+    // Admin → straight to dashboard
+    if (auth.user?.is_admin) {
       router.push('/admin/dashboard')
       return
     }
-    // ==== END NEW ====
 
-    // Non-admin flow: face prompt or profile
+    // Non-admin flow
     const dismissed =
       localStorage.getItem('fdq95_face_prompt_dismissed') === 'true'
     const enrolled = auth.user?.face_enrolled ?? false
-
     if (!enrolled && !dismissed) {
       showFacePrompt.value = true
     } else {

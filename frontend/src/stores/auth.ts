@@ -18,6 +18,7 @@ export interface AppUser {
   service_category: string | null
   provider_level:
     | 'level_0' | 'level_1' | 'level_2' | 'level_3' | 'level_4' | null
+  is_admin: boolean   // ← NEW
   managed_by_id: string | null
   admin_scope_country: string | null
   admin_scope_region: string | null

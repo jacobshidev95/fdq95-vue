@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator
 
 from app.models import (
     MessageType,
@@ -11,7 +11,6 @@ from app.models import (
     ServiceCategory,
     UserRole,
 )
-
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
     user_id: str
@@ -35,6 +34,18 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     phone_verified: bool = False
     created_at: datetime | None = None
 
+    # ----------------------------------------------------------------
+    # NEW: derived field — true when the user is any kind of admin
+    # (system / national / regional).
+    # ----------------------------------------------------------------
+    @computed_field  # type: ignore[misc]
+    @property
+    def is_admin(self) -> bool:
+        return self.provider_level in (
+            ProviderLevel.SYSTEM_ADMIN,
+            ProviderLevel.NATIONAL_ADMIN,
+            ProviderLevel.REGIONAL_ADMIN,
+        )
 
 class UserCreate(schemas.BaseUserCreate):
     user_id: str = Field(..., min_length=3, max_length=64)

@@ -25,9 +25,8 @@ const faceError = ref('')
 const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
 
 async function goDashboard() {
-  // verify the logged-in user is actually an admin
   await auth.fetchMe()
-  if (!auth.user || !ADMIN_LEVELS.includes(auth.user.provider_level || '')) {
+  if (!auth.user?.is_admin) {
     error.value = i18n.t('admin_no_access')
     auth.logout()
     return
