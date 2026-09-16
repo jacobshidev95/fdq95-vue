@@ -35,6 +35,17 @@ async function submit() {
     await auth.login(email.value, password.value)
     await profile.loadMe()
 
+    // ==== NEW: admin short-circuit ====
+    const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
+    const level = auth.user?.provider_level || ''
+    if (ADMIN_LEVELS.includes(level)) {
+      // Admin → go straight to the admin dashboard
+      router.push('/admin/dashboard')
+      return
+    }
+    // ==== END NEW ====
+
+    // Non-admin flow: face prompt or profile
     const dismissed =
       localStorage.getItem('fdq95_face_prompt_dismissed') === 'true'
     const enrolled = auth.user?.face_enrolled ?? false
@@ -54,6 +65,44 @@ async function submit() {
     loading.value = false
   }
 }
+
+function goForgotPassword() {
+  router.push('/forgot-password')
+}
+
+function goRegister() {
+  router.push('/register')
+}
+
+function goFaceRecognition() {
+  const cached = localStorage.getItem('fdq95_face_credential')
+  if (cached) {
+    router.push('/face/login')
+  } else {
+    router.push('/face/enroll')
+  }
+}
+
+function promptAdd() {
+  showFacePrompt.value = false
+  router.push('/face/enroll')
+}
+
+function promptCancel() {
+  showFacePrompt.value = false
+  router.push('/profile')
+}
+
+function onDontShowChange() {
+  if (dontShowAgain.value) {
+    localStorage.setItem('fdq95_face_prompt_dismissed', 'true')
+  } else {
+    localStorage.removeItem('fdq95_face_prompt_dismissed')
+  }
+}
+</script>
+
+<!-- 模板部分不变 -->
 
 function goForgotPassword() {
   router.push('/forgot-password')

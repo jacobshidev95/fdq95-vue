@@ -20,6 +20,8 @@ import FaceLoginView from '@/views/FaceLoginView.vue'
 import AdminLoginView from '@/views/AdminLoginView.vue'
 import AdminDashboardView from '@/views/AdminDashboardView.vue'
 
+const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -45,11 +47,70 @@ const router = createRouter({
     { path: '/friends', name: 'friends', component: FriendsView },
 
     // ---- admin portal ----
-    { path: '/admin/login', name: 'admin-login', component: AdminLoginView },
-    { path: '/admin/dashboard', name: 'admin-dashboard', component: AdminDashboardView },
+    {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: AdminLoginView,
+      meta: { adminLogin: true },
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard',
+      component: AdminDashboardView,
+      meta: { requiresAdmin: true },
+    },
     // legacy redirect
     { path: '/admin/users', redirect: '/admin/dashboard' },
   ],
+})
+
+// ---- global guard ----
+router.beforeEach(async (to) => {
+  // Guard 1: admin-only pages
+  if (to.meta.requiresAdmin) {
+    const token = localStorage.getItem('fdq95_token')
+    if (!token) {
+      return { path: '/admin/login', query: { redirect: to.fullPath } }
+    }
+    // We rely on the cached user from a previous /users/me call.
+    // If not present, do a one-off fetch.
+    try {
+      const resp = await fetch('/users/me', {
+        headers: { Authorization: 'Bearer ' + token },
+      })
+      if (!resp.ok) {
+        return { path: '/admin/login' }
+      }
+      const user = await resp.json()
+      if (!ADMIN_LEVELS.includes(user.provider_level)) {
+        return { path: '/profile' }
+      }
+    } catch {
+      return { path: '/admin/login' }
+    }
+  }
+
+  // Guard 2: already-authenticated admins should not see /admin/login
+  if (to.meta.adminLogin) {
+    const token = localStorage.getItem('fdq95_token')
+    if (token) {
+      try {
+        const resp = await fetch('/users/me', {
+          headers: { Authorization: 'Bearer ' + token },
+        })
+        if (resp.ok) {
+          const user = await resp.json()
+          if (ADMIN_LEVELS.includes(user.provider_level)) {
+            return { path: '/admin/dashboard' }
+          }
+        }
+      } catch {
+        /* ignore, allow login page */
+      }
+    }
+  }
+
+  return true
 })
 
 export default router
