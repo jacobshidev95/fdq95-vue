@@ -19,11 +19,20 @@ class Settings(BaseSettings):
     )
     LIBRETRANSLATE_API_KEY: str = os.getenv("LIBRETRANSLATE_API_KEY", "")
 
+    # ---- SMTP ----
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587") or "587")
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    # "ssl" for port 465, "starttls" for port 587, "none" for plain
+    SMTP_SECURITY: str = os.getenv("SMTP_SECURITY", "starttls").lower()
+    # Accept both SMTP_USERNAME (Hostinger style) and SMTP_USER (legacy)
+    SMTP_USERNAME: str = os.getenv(
+        "SMTP_USERNAME", os.getenv("SMTP_USER", "")
+    )
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "") or os.getenv("SMTP_USER", "")
+    # Accept both MAIL_FROM (Hostinger style) and SMTP_FROM (legacy)
+    MAIL_FROM: str = os.getenv(
+        "MAIL_FROM", os.getenv("SMTP_FROM", "")
+    ) or os.getenv("SMTP_USERNAME", os.getenv("SMTP_USER", ""))
 
     @property
     def cors_origin_list(self) -> List[str]:
