@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref，watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore, LANGUAGES } from '@/stores/i18n'
@@ -35,6 +35,10 @@ const CATEGORIES: { value: Category; key: string }[] = [
 const title = ref('')
 const category = ref<Category | null>(null)
 const promptLang = ref(i18n.language || 'en')
+// ★ 新增：跟随界面语言
+watch(() => i18n.language, (newLang) => {
+  promptLang.value = newLang
+})
 const prompt = ref('')
 const targetDuration = ref<number>(30)
 

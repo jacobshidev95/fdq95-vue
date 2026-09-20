@@ -42,6 +42,8 @@ class VideoPipelineState(TypedDict):
     user_idea: str                          # 用户输入的创意/对话
     target_duration: int                    # 目标时长（秒）
 
+    language: str  # ★ 新增
+
     # 编剧阶段
     script: str                             # 完整剧本
     scenes: List[Dict[str, Any]]            # 分镜列表
@@ -109,19 +111,19 @@ async def call_llm(prompt: str, system_prompt: str = "") -> str:
 async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
     """
     将用户创意扩写为专业分镜剧本
-
-    - 若 AI_VIDEO_BACKEND=mock：直接返回硬编码场景，跳过 LLM
-    - 否则：调用 LLM 生成剧本（参考 ScriptAgent 的 ScripterAgent）
+    - 若 AI_VIDEO_BACKEND=mock：跳过 LLM
+    - 否则：把 language 传进 prompt，让 LLM 用该语言输出
     """
     logger.info("[ScripterAgent] 开始编剧...")
     user_idea = state["user_idea"]
     target_duration = state.get("target_duration", 60)
-    clip_duration = 10  # 每个片段约 10 秒
+    language = state.get("language", "en")          # 'en' / 'zh-CN' / 'es' / ...
+    clip_duration = 10
     num_scenes = max(1, target_duration // clip_duration)
 
-    # ★ mock 模式：跳过 LLM，直接构造场景，保证端到端流程可跑通
+    # mock 模式
     if AI_VIDEO_BACKEND == "mock":
-        logger.info("[ScripterAgent] mock 模式，使用硬编码场景")
+        logger.info("[ScripterAgent] mock 模式")
         scenes = []
         for i in range(num_scenes):
             scenes.append({
@@ -139,35 +141,47 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
             "progress": 0.2,
         }
 
-    # ── 真实 LLM 模式 ──
-    system_prompt = """你是一位专业的AI视频编剧。你的任务是将用户的创意扩写为详细的分镜剧本。
+    # ★ 唯一的改动：把 language 传给 LLM
+    system_prompt = (
+        "You are a professional AI video screenwriter.\n"
+        "\n"
+        "Your task: expand the user's idea into a detailed storyboard script.\n"
+        "\n"
+        "Requirements:\n"
+        "1. Split the content into multiple scenes, each about 10 seconds.\n"
+        "2. Each scene must contain: scene_number, description, camera, "
+        "characters, dialogue, audio_effects.\n"
+        "3. Ensure narrative coherence and character consistency.\n"
+        f"4. IMPORTANT: Write ALL text fields (description, dialogue, "
+        f"audio_effects) in the language with BCP-47 code: **{language}**.\n"
+        "   Examples: 'en'=English, 'zh-CN'=Simplified Chinese, 'es'=Spanish, "
+        "'fr'=French, 'ja'=Japanese.\n"
+        "5. The `description` field goes directly to a video generation model — "
+        "make it visual and concrete (subjects, actions, lighting, mood, motion).\n"
+        "6. Output strict JSON only, no markdown fences, no extra text."
+    )
 
-要求：
-1. 将内容拆分为多个场景，每个场景约10秒
-2. 每个场景包含：scene_number, description, camera, characters, dialogue, audio_effects
-3. 确保场景之间的叙事连贯性和角色一致性
-4. 输出严格的 JSON 格式"""
-
-    prompt = f"""用户创意：{user_idea}
-
-请生成 {num_scenes} 个场景的分镜剧本。输出格式：
-{{
-  "script_summary": "整体故事概述",
-  "scenes": [
-    {{
-      "scene_number": 1,
-      "description": "场景的视觉描述，用于视频生成",
-      "camera": "镜头语言描述",
-      "characters": ["角色列表"],
-      "dialogue": "该场景中的对白",
-      "audio_effects": "音效和环境音描述"
-    }}
-  ]
-}}"""
+    prompt = (
+        f"User idea: {user_idea}\n\n"
+        f"Generate {num_scenes} scenes.\n\n"
+        "Output JSON:\n"
+        "{\n"
+        '  "script_summary": "...",\n'
+        '  "scenes": [\n'
+        "    {\n"
+        '      "scene_number": 1,\n'
+        '      "description": "...",\n'
+        '      "camera": "...",\n'
+        '      "characters": ["..."],\n'
+        '      "dialogue": "...",\n'
+        '      "audio_effects": "..."\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
 
     try:
         result = await call_llm(prompt, system_prompt)
-        # 尝试解析 JSON
         result = result.strip()
         if result.startswith("```json"):
             result = result[7:]
@@ -179,8 +193,7 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
 
         scenes = parsed.get("scenes", [])
         script = parsed.get("script_summary", "")
-
-        logger.info(f"[ScripterAgent] 完成，生成 {len(scenes)} 个场景")
+        logger.info(f"[ScripterAgent] 完成，{len(scenes)} 个场景（language={language}）")
         return {
             "script": script,
             "scenes": scenes,
@@ -196,7 +209,6 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
             "current_step": "scripting_error",
             "progress": 0.2,
         }
-
 
 # ──────────────────────────────────────────────
 # 智能体 2：导演智能体 (DirectorAgent)
@@ -343,15 +355,19 @@ async def final_assembly(state: VideoPipelineState) -> Dict[str, Any]:
         }
 
     # 3. 如果有对白，生成配音（可选）
+    # 3. 如果有对白，生成配音
     all_dialogue = " ".join(
         c.get("dialogue", "") for c in clips if c.get("dialogue")
     )
     if all_dialogue.strip():
+        language = state.get("language", "en")  # ★ 取语言
         try:
             await tts_service.generate_speech(
-                text=all_dialogue, output_id=f"{final_id}_dub"
+                text=all_dialogue,
+                language=language,  # ★ 传给 TTS
+                output_id=f"{final_id}_dub",
             )
-            logger.info("[FinalAssembly] 配音生成完成")
+            logger.info(f"[FinalAssembly] 配音生成完成（language={language}）")
         except Exception as e:
             logger.warning(f"[FinalAssembly] 配音生成失败（不影响视频）: {e}")
 
@@ -437,6 +453,7 @@ async def run_video_pipeline(
     user_idea: str,
     target_duration: int = 60,
     task_id: Optional[str] = None,
+    language: str = "en",                       # ★ 新增
 ) -> Dict[str, Any]:
     """
     运行完整的视频生成流水线
@@ -455,6 +472,7 @@ async def run_video_pipeline(
     initial_state = {
         "user_idea": user_idea,
         "target_duration": target_duration,
+        "language": language,  # ★ 加进 state
         "script": "",
         "scenes": [],
         "clips": [],

@@ -42,7 +42,7 @@ UPLOAD_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 class GenerateRequest(BaseModel):
     idea: str = Field(..., description="视频创意描述", min_length=10)
     target_duration: int = Field(60, description="目标时长（秒）", ge=10, le=600)
-    language: str = Field("zh", description="语言代码")
+    language: str = Field("en", description="BCP-47 语言代码")  # ★ 默认改为 en
 
 
 class GenerateResponse(BaseModel):
@@ -75,7 +75,7 @@ class PublishResponse(BaseModel):
 # ──────────────────────────────────────────────
 # 后台任务执行
 # ──────────────────────────────────────────────
-async def _execute_pipeline(task_id: str, idea: str, target_duration: int):
+async def _execute_pipeline(task_id: str, idea: str, target_duration: int, language: str):
     """在后台运行视频生成流水线"""
     queue = _event_queues.get(task_id)
 
@@ -98,6 +98,7 @@ async def _execute_pipeline(task_id: str, idea: str, target_duration: int):
             user_idea=idea,
             target_duration=target_duration,
             task_id=task_id,
+            language=language,
         )
 
         final_video_id = result.get("final_video_id")
@@ -154,7 +155,7 @@ async def generate_video(req: GenerateRequest, background_tasks: BackgroundTasks
     task_id = uuid.uuid4().hex[:12]
     _event_queues[task_id] = asyncio.Queue()
     background_tasks.add_task(
-        _execute_pipeline, task_id, req.idea, req.target_duration
+        _execute_pipeline, task_id, req.idea, req.target_duration, req.language,
     )
     return GenerateResponse(
         task_id=task_id,
