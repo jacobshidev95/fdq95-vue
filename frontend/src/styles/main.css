@@ -1,0 +1,179 @@
+/* ============================================================
+   FDQ95 — 全局样式 main.css
+   ============================================================ */
+
+:root {
+  --bg:        #0d0d0f;
+  --bg-soft:   #141418;
+  --card:      #1a1a20;
+  --border:    #2a2a32;
+  --text:      #e8e8ec;
+  --text-dim:  #8a8a94;
+  --gold:      #d4af37;
+  --gold-soft: #b8912a;
+  --error:     #e74c3c;
+  --ok:        #2ecc71;
+  --radius:    10px;
+  --input-h:   2.6rem;
+  --hint-h:    1.05rem;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+#app { min-height: 100vh; }
+
+/* ---------- 排版 ---------- */
+h1, h2, h3 { font-weight: 600; margin: 0 0 0.75rem; }
+.title-gold { color: var(--gold); letter-spacing: 0.02em; }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- 表单元素 ---------- */
+label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.3rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  height: var(--input-h);
+  padding: 0 0.7rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+
+  /* 关键：禁用过渡，避免聚焦/输入时布局抖动 */
+  transition: none !important;
+  will-change: auto;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--gold);
+}
+
+textarea {
+  height: auto;
+  min-height: 5rem;
+  padding: 0.55rem 0.7rem;
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--text-dim); }
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 2.2rem;
+}
+
+select:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* 提示行固定高度，出现/消失不再推动下方内容 */
+.field-hint {
+  min-height: var(--hint-h);
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  line-height: var(--hint-h);
+  color: var(--text-dim);
+}
+.field-hint.ok  { color: var(--ok); }
+.field-hint.err { color: var(--error); }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: var(--input-h);
+  padding: 0 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: none;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-primary { background: var(--gold); color: #16160f; }
+.btn-primary:not(:disabled):hover { background: var(--gold-soft); }
+.btn-block { width: 100%; }
+
+/* ---------- 提示条 ---------- */
+.notice {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  margin-bottom: 0.6rem;
+}
+.notice-error {
+  background: rgba(231, 76, 60, 0.12);
+  color: var(--error);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+}
+.notice-ok {
+  background: rgba(46, 204, 113, 0.12);
+  color: var(--ok);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+}
+
+/* ---------- 链接 ---------- */
+a { color: var(--gold); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ============================================================
+   防抖动专项修复
+   问题根因：
+     (1) input/select/textarea 带 transition，focus 时 border-color 动画
+         会触发重排重绘；
+     (2) 可用性提示（user_id / email / password）使用 v-if 直接挂载/卸载，
+         输入过程中反复插入/删除 DOM，推动整个表单跳动。
+   对策：
+     (1) 全站表单控件的 transition 统一置为 none（上方已设）；
+     (2) .field-hint 使用固定 min-height + line-height，并始终渲染占位
+         （模板中已改为始终输出 <p class="field-hint">，无内容时用 &nbsp;）；
+     (3) 如需更稳妥，可给输入框外层加 .field 容器并固定高度：
+   ============================================================ */
+.field {
+  display: flex;
+  flex-direction: column;
+  min-height: 5.4rem;    /* label + input + hint 的总高 */
+}
+.field label { flex-shrink: 0; }
+.field input,
+.field select { flex-shrink: 0; height: var(--input-h); }
