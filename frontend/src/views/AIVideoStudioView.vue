@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, onMounted } from 'vue'
+import { computed, onBeforeUnmount, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
-import { useI18nStore, LANGUAGES } from '@/stores/i18n'
+import { useI18nStore } from '@/stores/i18n'
 import {
   startGeneration,
   subscribeProgress,
@@ -34,13 +34,6 @@ const CATEGORIES: { value: Category; key: string }[] = [
 
 const title = ref('')
 const category = ref<Category | null>(null)
-const promptLang = ref(i18n.language || 'en')
-
-// ★ 新增：跟随界面语言
-watch(() => i18n.language, (newLang) => {
-  promptLang.value = newLang
-})
-
 const prompt = ref('')
 
 // ★ 默认 8 秒（最便宜）
@@ -149,7 +142,7 @@ async function generateVideo() {
     const { task_id } = await startGeneration({
       idea: prompt.value.trim(),
       target_duration: targetDuration.value,
-      language: promptLang.value,
+      language: i18n.language,          // ★ 直接用 i18n.language
       idempotency_key: idempotencyKey,
     })
     generateStage.value = i18n.t('ai_video_stage_processing')
@@ -159,14 +152,12 @@ async function generateVideo() {
       eventSource = subscribeProgress(
         task_id,
         (data) => {
-          // 进度回调
           generateProgress.value = Math.round((data.progress || 0) * 100)
           if (data.step) {
             generateStage.value = mapStage(data.step)
           }
         },
         (data: TaskStatus) => {
-          // 完成回调
           if (data.final_video_url) {
             generatedVideoUrl.value = data.final_video_url
             generatedVideoId.value =
@@ -191,7 +182,6 @@ async function generateVideo() {
   } finally {
     generating.value = false
     closeEventSource()
-    // ★ 完成后刷新预算
     loadBudget()
   }
 }
@@ -221,13 +211,11 @@ async function publishVideo() {
   }
   publishing.value = true
   try {
-    // 1. 把生成的 mp4 转正到 uploads/videos/
     const res = await publishAiVideo(
       generatedVideoId.value,
       title.value.trim(),
     )
 
-    // 2. 走既有的 /api/videos 接口创建视频记录
     await api.post('/api/videos', {
       title: title.value.trim(),
       category: category.value,
@@ -310,7 +298,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <!-- 创意 + 时长 + 语言 -->
+      <!-- 创意 + 时长 -->
       <section class="card">
         <div class="prompt-head">
           <label class="field-label">{{ i18n.t('ai_video_prompt') }}</label>
@@ -319,15 +307,6 @@ onBeforeUnmount(() => {
               <option :value="8">8s ($0.60)</option>
               <option :value="16">16s ($1.20)</option>
               <option :value="24">24s ($1.80)</option>
-            </select>
-            <select v-model="promptLang" class="lang-inline">
-              <option
-                v-for="(label, code) in LANGUAGES"
-                :key="code"
-                :value="code"
-              >
-                {{ label }}
-              </option>
             </select>
           </div>
         </div>
@@ -546,7 +525,7 @@ onBeforeUnmount(() => {
   accent-color: #8b5cf6;
 }
 
-/* 创意卡片头：label + 时长/语言下拉 */
+/* 创意卡片头：label + 时长下拉 */
 .prompt-head {
   display: flex;
   justify-content: space-between;
@@ -852,9 +831,8 @@ onBeforeUnmount(() => {
 .notice-ok {
   background: rgba(46, 204, 113, 0.15);
   border: 1px solid #2ecc71;
-  color: #a5f5c6;
+  color: #a5f6c6;
 }
-
 
 /* 响应式 */
 @media (max-width: 720px) {
