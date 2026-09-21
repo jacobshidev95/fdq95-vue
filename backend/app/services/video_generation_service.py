@@ -290,6 +290,7 @@ class VideoGenerationService:
             "cost_cents": 0,
         }
 
+
     async def stitch_clips(
         self, clip_paths: List[str], output_name: Optional[str] = None
     ) -> Dict[str, Any]:

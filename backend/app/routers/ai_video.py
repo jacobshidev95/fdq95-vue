@@ -363,7 +363,6 @@ async def publish_ai_video(req: PublishRequest):
         file_size=file_size,
     )
 
-
 @router.get("/budget")
 async def get_budget():
     """查询预算使用情况"""

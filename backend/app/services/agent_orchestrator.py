@@ -435,7 +435,6 @@ def build_video_pipeline() -> StateGraph:
 
 _compiled_pipeline = None
 
-
 def get_compiled_pipeline():
     global _compiled_pipeline
     if _compiled_pipeline is None:
