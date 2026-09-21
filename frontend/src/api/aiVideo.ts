@@ -12,6 +12,7 @@ export interface GenerateRequest {
   idea: string
   target_duration: number
   language: string
+  idempotency_key?: string
 }
 
 export interface TaskStatus {

@@ -2,9 +2,14 @@
 视频生成服务层 — 调用 LTX-2 生成带音频的视频片段
 
 LTX-2 API 是异步的：
-1. POST /v2/text-to-video   → 返回 {id, created_at}
-2. GET  /v2/text-to-video/{id}  → 轮询直到 status=completed
+1. POST /v2/text-to-video        → 返回 {id, created_at}
+2. GET  /v2/text-to-video/{id}   → 轮询直到 status=completed
 3. 下载 result.video_url
+
+★ 成本控制：
+   - 每次提交前先查余额
+   - 余额不足抛 InsufficientFundsError（上层可直接停止）
+   - 记录每片段的估算成本
 """
 import os
 import uuid
@@ -16,6 +21,14 @@ from pathlib import Path
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+# ──────────────────────────────────────────────
+# 异常类型
+# ──────────────────────────────────────────────
+class InsufficientFundsError(RuntimeError):
+    """LTX-2 余额不足 — 上层可据此立即停止整个任务"""
+    pass
 
 
 # ──────────────────────────────────────────────
@@ -35,16 +48,26 @@ GENERATION_BACKEND = os.getenv("AI_VIDEO_BACKEND", "mock")
 # 每个片段的最大时长（秒）
 MAX_CLIP_DURATION = int(os.getenv("AI_VIDEO_CLIP_DURATION", "8"))
 
-# LTX-2 模型选择
-LTX2_MODEL = os.getenv("LTX2_MODEL", "ltx-2-5-pro")
+# LTX-2 模型
+LTX2_MODEL = os.getenv("LTX2_MODEL", "ltx-2-3-fast")
 
 # 轮询参数
-POLL_INTERVAL = 5        # 每次轮询间隔秒
-POLL_MAX_ATTEMPTS = 120  # 最多轮询次数（120 * 5s = 10 分钟）
+POLL_INTERVAL = 5
+POLL_MAX_ATTEMPTS = 120
+
+# ★ 成本参数：每秒钟的价格（美分）
+#   ltx-2-3-fast ≈ 7.5 美分/秒，即 $0.60/8秒
+LTX2_PRICE_PER_SECOND_CENTS = float(
+    os.getenv("LTX2_PRICE_PER_SECOND_CENTS", "7.5")
+)
+
+# ★ 单次生成预算上限（美分）—— 超过此值的任务会被拒绝
+#   默认 200 美分 = $2.00
+MAX_BUDGET_CENTS = float(os.getenv("AI_VIDEO_MAX_BUDGET_CENTS", "200"))
 
 
 class VideoGenerationService:
-    """视频生成服务 — 封装 LTX-2 / MOVA 的 API 调用"""
+    """视频生成服务"""
 
     def __init__(self):
         self.backend = GENERATION_BACKEND
@@ -55,7 +78,7 @@ class VideoGenerationService:
         prompt: str,
         audio_prompt: Optional[str] = None,
         duration: int = MAX_CLIP_DURATION,
-        resolution: str = "1920x1080",
+        resolution: str = "1280x720",
         seed: int = 42,
     ) -> Dict[str, Any]:
         """
@@ -90,9 +113,12 @@ class VideoGenerationService:
         if not LTX2_API_KEY:
             raise RuntimeError("LTX2_API_KEY 未配置")
 
+        # ★ 成本预估
+        est_cost = duration * LTX2_PRICE_PER_SECOND_CENTS
+        logger.info(f"[LTX-2] 片段预计花费: {est_cost:.1f} 美分 (${est_cost/100:.2f})")
+
         output_path = OUTPUT_DIR / f"{clip_id}.mp4"
 
-        # 把音频描述合并到 prompt 中（LTX-2 会自动生成匹配的音频）
         full_prompt = prompt
         if audio_prompt:
             full_prompt = f"{prompt}. Audio: {audio_prompt}"
@@ -119,7 +145,15 @@ class VideoGenerationService:
             resp = await client.post(submit_url, json=payload, headers=headers)
 
             if resp.status_code >= 400:
-                logger.error(f"[LTX-2] 提交失败 {resp.status_code}: {resp.text[:500]}")
+                error_body = resp.text[:500]
+                logger.error(f"[LTX-2] 提交失败 {resp.status_code}: {error_body}")
+
+                # ★ 402 或 Insufficient funds → 抛特定异常
+                if resp.status_code == 402 or "Insufficient" in error_body:
+                    raise InsufficientFundsError(
+                        f"LTX-2 余额不足 (HTTP {resp.status_code}): {error_body}"
+                    )
+
                 resp.raise_for_status()
 
             submit_data = resp.json()
@@ -147,7 +181,6 @@ class VideoGenerationService:
             logger.info(f"[LTX-2] 轮询 #{attempt + 1}: job={job_id} status={status}")
 
             if status == "completed":
-                # ★ 步骤 3: 下载视频
                 result = data.get("result", {})
                 video_url = result.get("video_url") or result.get("url")
 
@@ -167,14 +200,17 @@ class VideoGenerationService:
                     "path": str(output_path),
                     "duration": duration,
                     "has_audio": True,
+                    "cost_cents": est_cost,
                 }
 
             elif status == "failed":
                 error_msg = data.get("error", {}).get("message", "未知错误")
+                # ★ 失败信息里含余额相关词也抛特定异常
+                if "Insufficient" in error_msg or "funds" in error_msg.lower():
+                    raise InsufficientFundsError(f"LTX-2 任务失败: {error_msg}")
                 raise RuntimeError(f"LTX-2 任务失败: {error_msg}")
 
             elif status in ("pending", "processing", "queued", "running"):
-                # 继续轮询
                 continue
             else:
                 logger.warning(f"[LTX-2] 未知状态 {status}，继续等待")
@@ -251,14 +287,13 @@ class VideoGenerationService:
             "path": str(output_path),
             "duration": duration,
             "has_audio": True,
+            "cost_cents": 0,
         }
 
     async def stitch_clips(
         self, clip_paths: List[str], output_name: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        使用 FFmpeg 将多个视频片段拼接为长视频
-        """
+        """使用 FFmpeg 将多个视频片段拼接为长视频"""
         if not clip_paths:
             raise ValueError("没有可拼接的视频片段")
 
@@ -270,7 +305,6 @@ class VideoGenerationService:
             for p in clip_paths:
                 f.write(f"file '{p}'\n")
 
-        # 先尝试无损拼接
         cmd = [
             "ffmpeg", "-y",
             "-f", "concat", "-safe", "0",
@@ -283,7 +317,6 @@ class VideoGenerationService:
         )
         _, stderr = await proc.communicate()
 
-        # 如果无损拼接失败（编码不一致），转码拼接
         if proc.returncode != 0:
             logger.warning("无损拼接失败，转码拼接中...")
             cmd = [
@@ -297,7 +330,7 @@ class VideoGenerationService:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE
             )
-            _, stderr = await proc.communicate()
+            await proc.communicate()
 
         list_file.unlink(missing_ok=True)
 

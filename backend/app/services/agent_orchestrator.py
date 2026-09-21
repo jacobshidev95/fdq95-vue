@@ -2,10 +2,11 @@
 多智能体编排层 — 基于 LangGraph 的 StateGraph
 实现 "编剧 → 导演 → 评审" 协作流水线
 
-设计参考：
-- ViMax 的多智能体协作框架 (HKUDS/ViMax)
-- ScriptAgent 的 ScripterAgent / DirectorAgent / CriticAgent 架构
-- LangGraph 的状态管理机制
+★ 成本控制：
+   1. MAX_SCENES 限制场景总数
+   2. MAX_CLIP_DURATION 限制片段时长
+   3. 遇到 InsufficientFundsError 立即停止后续提交
+   4. 累计成本超预算时停止
 """
 import os
 import json
@@ -17,66 +18,63 @@ from operator import add
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from app.services.video_generation_service import VideoGenerationService
+from app.services.video_generation_service import (
+    VideoGenerationService,
+    InsufficientFundsError,
+)
 from app.services.tts_service import TTSService
 
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
-# LLM 配置（兼容 OpenAI 格式）
+# LLM 配置
 # ──────────────────────────────────────────────
-LLM_API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
+LLM_API_BASE = os.getenv("LLM_API_BASE", "https://api.groq.com/openai/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3.8-27b")
 
-# 生成后端（mock / ltx2 / mova）
 AI_VIDEO_BACKEND = os.getenv("AI_VIDEO_BACKEND", "mock")
 
+# ★ 成本控制参数
+MAX_SCENES = int(os.getenv("AI_VIDEO_MAX_SCENES", "3"))            # 最多几个场景
+CLIP_DURATION = int(os.getenv("AI_VIDEO_CLIP_DURATION", "8"))      # 每片段秒数
+MAX_BUDGET_CENTS = float(os.getenv("AI_VIDEO_MAX_BUDGET_CENTS", "200"))  # 总预算（美分）
+
 
 # ──────────────────────────────────────────────
-# 状态定义 — 在整个流水线中流转
+# 状态定义
 # ──────────────────────────────────────────────
 class VideoPipelineState(TypedDict):
-    """视频生成流水线的全局状态"""
-    # 输入
-    user_idea: str                          # 用户输入的创意/对话
-    target_duration: int                    # 目标时长（秒）
-
-    language: str  # ★ 新增
-
-    # 编剧阶段
-    script: str                             # 完整剧本
-    scenes: List[Dict[str, Any]]            # 分镜列表
-
-    # 导演阶段
-    clips: Annotated[List[Dict[str, Any]], add]  # 生成的视频片段
-    errors: Annotated[List[str], add]       # 错误记录
-
-    # 评审阶段
-    review_passed: bool                     # 评审是否通过
-    review_notes: str                       # 评审意见
-
-    # 最终输出
+    user_idea: str
+    target_duration: int
+    language: str
+    script: str
+    scenes: List[Dict[str, Any]]
+    clips: Annotated[List[Dict[str, Any]], add]
+    errors: Annotated[List[str], add]
+    review_passed: bool
+    review_notes: str
     final_video_path: Optional[str]
     final_video_id: Optional[str]
-
-    # 进度追踪
     current_step: str
-    progress: float                         # 0.0 ~ 1.0
+    progress: float
+    total_cost_cents: float                 # ★ 累计成本
 
 
 # ──────────────────────────────────────────────
-# LLM 调用工具函数
+# LLM 调用
 # ──────────────────────────────────────────────
 async def call_llm(prompt: str, system_prompt: str = "") -> str:
-    """调用 LLM 生成文本（兼容 OpenAI 格式的 API）"""
     import httpx
 
-    # ★ 防御：key 为空时给出清晰错误，避免 Illegal header value
     if not LLM_API_KEY or not LLM_API_KEY.strip():
         raise RuntimeError(
-            "LLM_API_KEY 未配置，无法调用 LLM（请设置 .env 或使用 AI_VIDEO_BACKEND=mock）"
+            "LLM_API_KEY 未配置（请设置 .env 或使用 AI_VIDEO_BACKEND=mock）"
         )
+    try:
+        LLM_API_KEY.encode("ascii")
+    except UnicodeEncodeError:
+        raise RuntimeError("LLM_API_KEY 含非 ASCII 字符（可能还是占位符）")
 
     messages = []
     if system_prompt:
@@ -106,20 +104,23 @@ async def call_llm(prompt: str, system_prompt: str = "") -> str:
 
 
 # ──────────────────────────────────────────────
-# 智能体 1：编剧智能体 (ScripterAgent)
+# ScripterAgent
 # ──────────────────────────────────────────────
 async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
-    """
-    将用户创意扩写为专业分镜剧本
-    - 若 AI_VIDEO_BACKEND=mock：跳过 LLM
-    - 否则：把 language 传进 prompt，让 LLM 用该语言输出
-    """
     logger.info("[ScripterAgent] 开始编剧...")
     user_idea = state["user_idea"]
-    target_duration = state.get("target_duration", 60)
-    language = state.get("language", "en")          # 'en' / 'zh-CN' / 'es' / ...
-    clip_duration = 10
-    num_scenes = max(1, target_duration // clip_duration)
+    target_duration = state.get("target_duration", 24)
+    language = state.get("language", "en")
+
+    # ★ 场景数控制：先按目标时长算，再被 MAX_SCENES 限
+    raw_scenes = max(1, target_duration // CLIP_DURATION)
+    num_scenes = min(raw_scenes, MAX_SCENES)
+
+    logger.info(
+        f"[ScripterAgent] target={target_duration}s "
+        f"clip={CLIP_DURATION}s "
+        f"→ 场景数={num_scenes}（原 {raw_scenes}，上限 {MAX_SCENES}）"
+    )
 
     # mock 模式
     if AI_VIDEO_BACKEND == "mock":
@@ -141,29 +142,29 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
             "progress": 0.2,
         }
 
-    # ★ 唯一的改动：把 language 传给 LLM
+    # ★ 严格告诉 LLM 场景数上限
     system_prompt = (
         "You are a professional AI video screenwriter.\n"
         "\n"
         "Your task: expand the user's idea into a detailed storyboard script.\n"
         "\n"
         "Requirements:\n"
-        "1. Split the content into multiple scenes, each about 10 seconds.\n"
-        "2. Each scene must contain: scene_number, description, camera, "
+        f"1. Generate EXACTLY {num_scenes} scenes. Do NOT generate more.\n"
+        f"2. Each scene should be about {CLIP_DURATION} seconds long.\n"
+        "3. Each scene must contain: scene_number, description, camera, "
         "characters, dialogue, audio_effects.\n"
-        "3. Ensure narrative coherence and character consistency.\n"
-        f"4. IMPORTANT: Write ALL text fields (description, dialogue, "
+        "4. Ensure narrative coherence and character consistency.\n"
+        f"5. IMPORTANT: Write ALL text fields (description, dialogue, "
         f"audio_effects) in the language with BCP-47 code: **{language}**.\n"
-        "   Examples: 'en'=English, 'zh-CN'=Simplified Chinese, 'es'=Spanish, "
-        "'fr'=French, 'ja'=Japanese.\n"
-        "5. The `description` field goes directly to a video generation model — "
+        "   Examples: 'en'=English, 'zh-CN'=Simplified Chinese, 'es'=Spanish.\n"
+        "6. The `description` field goes directly to a video generation model — "
         "make it visual and concrete (subjects, actions, lighting, mood, motion).\n"
-        "6. Output strict JSON only, no markdown fences, no extra text."
+        "7. Output strict JSON only, no markdown fences, no extra text."
     )
 
     prompt = (
         f"User idea: {user_idea}\n\n"
-        f"Generate {num_scenes} scenes.\n\n"
+        f"Generate EXACTLY {num_scenes} scenes.\n\n"
         "Output JSON:\n"
         "{\n"
         '  "script_summary": "...",\n'
@@ -192,6 +193,15 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
         parsed = json.loads(result.strip())
 
         scenes = parsed.get("scenes", [])
+
+        # ★ 二次防御：LLM 可能不听话，超出 MAX_SCENES 就截断
+        if len(scenes) > num_scenes:
+            logger.warning(
+                f"[ScripterAgent] LLM 返回 {len(scenes)} 个场景，"
+                f"超出上限 {num_scenes}，已截断"
+            )
+            scenes = scenes[:num_scenes]
+
         script = parsed.get("script_summary", "")
         logger.info(f"[ScripterAgent] 完成，{len(scenes)} 个场景（language={language}）")
         return {
@@ -210,16 +220,11 @@ async def scripter_agent(state: VideoPipelineState) -> Dict[str, Any]:
             "progress": 0.2,
         }
 
+
 # ──────────────────────────────────────────────
-# 智能体 2：导演智能体 (DirectorAgent)
+# DirectorAgent
 # ──────────────────────────────────────────────
 async def director_agent(state: VideoPipelineState) -> Dict[str, Any]:
-    """
-    调用视频生成模型，逐场景生成视频片段
-
-    参考 ScriptAgent 的 DirectorAgent：
-    拆分场景 → 锚定帧 → 调用视频模型 → 保证一致性
-    """
     logger.info("[DirectorAgent] 开始生成视频片段...")
     scenes = state.get("scenes", [])
     if not scenes:
@@ -232,19 +237,30 @@ async def director_agent(state: VideoPipelineState) -> Dict[str, Any]:
     video_service = VideoGenerationService()
     clips = []
     errors = []
+    total_cost = 0.0
+    stopped_by_funds = False
 
     for i, scene in enumerate(scenes):
         scene_num = scene.get("scene_number", i + 1)
+
+        # ★ 预算检查
+        if total_cost >= MAX_BUDGET_CENTS:
+            msg = (
+                f"累计成本 {total_cost:.1f} 美分已达上限 "
+                f"{MAX_BUDGET_CENTS:.1f}，停止生成后续场景"
+            )
+            logger.warning(f"[DirectorAgent] {msg}")
+            errors.append(msg)
+            break
+
         description = scene.get("description", "")
         dialogue = scene.get("dialogue", "")
         audio_effects = scene.get("audio_effects", "")
 
-        # 构建视频生成 prompt
         video_prompt = description
         if scene.get("camera"):
             video_prompt += f", {scene['camera']}"
 
-        # 构建音频 prompt
         audio_prompt = ""
         if dialogue:
             audio_prompt += f"Dialogue: {dialogue}. "
@@ -255,38 +271,49 @@ async def director_agent(state: VideoPipelineState) -> Dict[str, Any]:
             clip = await video_service.generate_clip(
                 prompt=video_prompt,
                 audio_prompt=audio_prompt,
-                duration=10,
+                duration=CLIP_DURATION,
             )
             clip["scene_number"] = scene_num
             clip["dialogue"] = dialogue
             clips.append(clip)
-            logger.info(f"[DirectorAgent] 场景 {scene_num} 生成完成")
+            total_cost += clip.get("cost_cents", 0)
+            logger.info(
+                f"[DirectorAgent] 场景 {scene_num} 生成完成 "
+                f"(累计成本 {total_cost:.1f} 美分)"
+            )
+
+        except InsufficientFundsError as e:
+            # ★ 余额不足 → 立即停止
+            error_msg = f"场景 {scene_num} 生成失败（余额不足）: {str(e)}"
+            logger.error(f"[DirectorAgent] {error_msg}")
+            errors.append(error_msg)
+            stopped_by_funds = True
+            break
+
         except Exception as e:
             error_msg = f"场景 {scene_num} 生成失败: {str(e)}"
             logger.error(f"[DirectorAgent] {error_msg}")
             errors.append(error_msg)
+            # 继续尝试下一个场景（除非是余额问题）
 
-        # 更新进度
         progress = 0.3 + (i + 1) / len(scenes) * 0.4
+
+    if stopped_by_funds:
+        logger.warning("[DirectorAgent] 因余额不足提前终止")
 
     return {
         "clips": clips,
         "errors": errors,
+        "total_cost_cents": total_cost,
         "current_step": "directing_done",
         "progress": 0.7,
     }
 
 
 # ──────────────────────────────────────────────
-# 智能体 3：评审智能体 (CriticAgent)
+# CriticAgent
 # ──────────────────────────────────────────────
 async def critic_agent(state: VideoPipelineState) -> Dict[str, Any]:
-    """
-    对生成的视频片段进行质量评审
-
-    参考 ScriptAgent 的 CriticAgent：
-    检查视觉质量、叙事连贯性、音画同步
-    """
     logger.info("[CriticAgent] 开始评审...")
     clips = state.get("clips", [])
     errors = state.get("errors", [])
@@ -299,15 +326,18 @@ async def critic_agent(state: VideoPipelineState) -> Dict[str, Any]:
             "progress": 0.8,
         }
 
-    # 评审逻辑：检查是否所有场景都成功生成
     scenes = state.get("scenes", [])
     expected = len(scenes)
     actual = len(clips)
+    cost = state.get("total_cost_cents", 0)
 
     passed = actual == expected and len(errors) == 0
-    notes = f"预期 {expected} 个片段，实际生成 {actual} 个。"
+    notes = (
+        f"预期 {expected} 个片段，实际生成 {actual} 个。"
+        f"累计花费 {cost:.1f} 美分（${cost/100:.2f}）。"
+    )
     if errors:
-        notes += f" 错误: {'; '.join(errors)}"
+        notes += f" 错误: {'; '.join(errors[:3])}"
 
     logger.info(f"[CriticAgent] 评审结果: {'通过' if passed else '未通过'} — {notes}")
 
@@ -320,12 +350,9 @@ async def critic_agent(state: VideoPipelineState) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────
-# 最终组装节点：拼接长视频 + 配音
+# FinalAssembly
 # ──────────────────────────────────────────────
 async def final_assembly(state: VideoPipelineState) -> Dict[str, Any]:
-    """
-    将生成的片段拼接为长视频，并叠加 TTS 配音
-    """
     logger.info("[FinalAssembly] 开始拼接长视频...")
     clips = state.get("clips", [])
     if not clips:
@@ -338,10 +365,8 @@ async def final_assembly(state: VideoPipelineState) -> Dict[str, Any]:
     video_service = VideoGenerationService()
     tts_service = TTSService()
 
-    # 1. 提取所有片段路径
     clip_paths = [c["path"] for c in clips if c.get("path")]
 
-    # 2. 拼接视频
     try:
         result = await video_service.stitch_clips(clip_paths)
         final_path = result["path"]
@@ -354,17 +379,16 @@ async def final_assembly(state: VideoPipelineState) -> Dict[str, Any]:
             "progress": 0.9,
         }
 
-    # 3. 如果有对白，生成配音（可选）
-    # 3. 如果有对白，生成配音
+    # TTS 配音
     all_dialogue = " ".join(
         c.get("dialogue", "") for c in clips if c.get("dialogue")
     )
     if all_dialogue.strip():
-        language = state.get("language", "en")  # ★ 取语言
+        language = state.get("language", "en")
         try:
             await tts_service.generate_speech(
                 text=all_dialogue,
-                language=language,  # ★ 传给 TTS
+                language=language,
                 output_id=f"{final_id}_dub",
             )
             logger.info(f"[FinalAssembly] 配音生成完成（language={language}）")
@@ -381,98 +405,59 @@ async def final_assembly(state: VideoPipelineState) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────
-# 条件路由
+# 路由 + 工作流
 # ──────────────────────────────────────────────
 def should_continue_after_review(state: VideoPipelineState) -> str:
-    """评审后的路由决策"""
     if state.get("review_passed"):
         return "final_assembly"
-    else:
-        # 评审未通过，检查是否有片段
-        if state.get("clips"):
-            return "final_assembly"  # 有片段就继续拼接
-        return END  # 完全没有片段，终止
+    if state.get("clips"):
+        return "final_assembly"
+    return END
 
 
-# ──────────────────────────────────────────────
-# 构建 LangGraph 工作流
-# ──────────────────────────────────────────────
 def build_video_pipeline() -> StateGraph:
-    """
-    构建视频生成多智能体工作流
-
-    流程：
-    scripter → director → critic → (条件) → final_assembly → END
-    """
     workflow = StateGraph(VideoPipelineState)
-
-    # 添加节点
     workflow.add_node("scripter", scripter_agent)
     workflow.add_node("director", director_agent)
     workflow.add_node("critic", critic_agent)
     workflow.add_node("final_assembly", final_assembly)
-
-    # 设置入口
     workflow.set_entry_point("scripter")
-
-    # 添加边
     workflow.add_edge("scripter", "director")
     workflow.add_edge("director", "critic")
-
-    # 条件边：评审后决定是否继续
     workflow.add_conditional_edges(
         "critic",
         should_continue_after_review,
-        {
-            "final_assembly": "final_assembly",
-            END: END,
-        },
+        {"final_assembly": "final_assembly", END: END},
     )
-
     workflow.add_edge("final_assembly", END)
-
     return workflow
 
 
-# ──────────────────────────────────────────────
-# 对外接口：编译并运行流水线
-# ──────────────────────────────────────────────
 _compiled_pipeline = None
 
 
 def get_compiled_pipeline():
-    """获取编译后的流水线（单例）"""
     global _compiled_pipeline
     if _compiled_pipeline is None:
-        workflow = build_video_pipeline()
-        _compiled_pipeline = workflow.compile(checkpointer=MemorySaver())
+        _compiled_pipeline = build_video_pipeline().compile(
+            checkpointer=MemorySaver()
+        )
     return _compiled_pipeline
 
 
 async def run_video_pipeline(
     user_idea: str,
-    target_duration: int = 60,
+    target_duration: int = 24,
     task_id: Optional[str] = None,
-    language: str = "en",                       # ★ 新增
+    language: str = "en",
 ) -> Dict[str, Any]:
-    """
-    运行完整的视频生成流水线
-
-    Args:
-        user_idea: 用户创意
-        target_duration: 目标时长（秒）
-        task_id: 任务 ID（用于状态追踪）
-
-    Returns:
-        最终状态字典
-    """
     pipeline = get_compiled_pipeline()
     task_id = task_id or uuid.uuid4().hex[:12]
 
     initial_state = {
         "user_idea": user_idea,
         "target_duration": target_duration,
-        "language": language,  # ★ 加进 state
+        "language": language,
         "script": "",
         "scenes": [],
         "clips": [],
@@ -483,6 +468,7 @@ async def run_video_pipeline(
         "final_video_id": None,
         "current_step": "initialized",
         "progress": 0.0,
+        "total_cost_cents": 0.0,
     }
 
     config = {"configurable": {"thread_id": task_id}}

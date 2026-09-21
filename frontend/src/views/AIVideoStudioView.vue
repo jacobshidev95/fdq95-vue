@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore, LANGUAGES } from '@/stores/i18n'
@@ -35,12 +35,38 @@ const CATEGORIES: { value: Category; key: string }[] = [
 const title = ref('')
 const category = ref<Category | null>(null)
 const promptLang = ref(i18n.language || 'en')
+
 // ★ 新增：跟随界面语言
 watch(() => i18n.language, (newLang) => {
   promptLang.value = newLang
 })
+
 const prompt = ref('')
-const targetDuration = ref<number>(30)
+
+// ★ 默认 8 秒（最便宜）
+const targetDuration = ref<number>(8)
+
+// ★ 预算信息
+const budgetInfo = ref<{
+  today_spent_cents: number
+  daily_limit_cents: number
+  per_task_limit_cents: number
+  price_per_second_cents: number
+  clip_duration_seconds: number
+} | null>(null)
+
+async function loadBudget() {
+  try {
+    const { data } = await api.get('/api/ai-video/budget')
+    budgetInfo.value = data
+  } catch (e) {
+    console.warn('[budget] 加载失败', e)
+  }
+}
+
+onMounted(() => {
+  loadBudget()
+})
 
 const generating = ref(false)
 const generateProgress = ref(0)
@@ -98,6 +124,17 @@ async function generateVideo() {
     return
   }
 
+  // ★ 前端预算预检查
+  if (budgetInfo.value) {
+    const estCost = targetDuration.value * (budgetInfo.value.price_per_second_cents || 7.5)
+    const today = budgetInfo.value.today_spent_cents
+    const limit = budgetInfo.value.daily_limit_cents
+    if (today + estCost > limit) {
+      errorMsg.value = `预算不足：今日已用 $${(today/100).toFixed(2)} / $${(limit/100).toFixed(2)}`
+      return
+    }
+  }
+
   generating.value = true
   generateProgress.value = 0
   generateStage.value = i18n.t('ai_video_stage_submit')
@@ -105,11 +142,15 @@ async function generateVideo() {
   generatedVideoId.value = ''
 
   try {
+    // ★ 生成幂等键（防止重复提交）
+    const idempotencyKey = crypto.randomUUID()
+
     // 1. 触发后端流水线
     const { task_id } = await startGeneration({
       idea: prompt.value.trim(),
       target_duration: targetDuration.value,
       language: promptLang.value,
+      idempotency_key: idempotencyKey,
     })
     generateStage.value = i18n.t('ai_video_stage_processing')
 
@@ -150,6 +191,8 @@ async function generateVideo() {
   } finally {
     generating.value = false
     closeEventSource()
+    // ★ 完成后刷新预算
+    loadBudget()
   }
 }
 
@@ -273,18 +316,9 @@ onBeforeUnmount(() => {
           <label class="field-label">{{ i18n.t('ai_video_prompt') }}</label>
           <div class="prompt-head-actions">
             <select v-model.number="targetDuration" class="lang-inline">
-              <option :value="30">
-                {{ i18n.t('ai_video_duration_label') }} 30s
-              </option>
-              <option :value="60">
-                {{ i18n.t('ai_video_duration_label') }} 60s
-              </option>
-              <option :value="120">
-                {{ i18n.t('ai_video_duration_label') }} 2min
-              </option>
-              <option :value="300">
-                {{ i18n.t('ai_video_duration_label') }} 5min
-              </option>
+              <option :value="8">8s ($0.60)</option>
+              <option :value="16">16s ($1.20)</option>
+              <option :value="24">24s ($1.80)</option>
             </select>
             <select v-model="promptLang" class="lang-inline">
               <option
@@ -352,6 +386,12 @@ onBeforeUnmount(() => {
             : i18n.t('ai_video_generate')
         }}
       </button>
+
+      <!-- ★ 今日预算显示 -->
+      <div v-if="budgetInfo" class="budget-hint">
+        今日已用: ${{ (budgetInfo.today_spent_cents / 100).toFixed(2) }} /
+        ${{ (budgetInfo.daily_limit_cents / 100).toFixed(2) }}
+      </div>
 
       <!-- 生成结果 -->
       <section v-if="generatedVideoUrl" class="card result-card">
@@ -663,6 +703,15 @@ onBeforeUnmount(() => {
   margin-bottom: 1rem;
 }
 .action-btn.generate:hover:not(:disabled) { background: #7c3aed; }
+
+/* ★ 今日预算显示 */
+.budget-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: -0.5rem 0 1rem;
+  font-family: ui-monospace, monospace;
+}
 
 .result-card {
   border: 1px solid rgba(139, 92, 246, 0.3);
