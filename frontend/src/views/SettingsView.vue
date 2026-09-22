@@ -45,9 +45,9 @@ function goChannelDMs() { router.push('/settings/channel/dms') }
 function goCreatorCenter() { router.push('/settings/creator-center') }
 
 function goPublishVideo() { router.push('/settings/publish-video') }
-function goGoLive() { router.push('/settings/go-live') }
+// ★ 改动：点击"发起直播"跳转到 /live（主持人模式）
+function goGoLive() { router.push('/live?role=moderator') }
 function goLaunchActivity() { router.push('/settings/launch-activity') }
-// ★ 新增：发表文章
 function goPublishArticle() { router.push('/settings/publish-article') }
 
 onMounted(loadProfile)
@@ -124,7 +124,7 @@ onMounted(loadProfile)
           <span class="row-arrow">›</span>
         </button>
 
-        <!-- ★ 底部操作：4 个按钮（新增"发表文章"在最左边） -->
+        <!-- ★ 底部操作：4 个按钮 -->
         <div class="quad-actions">
           <button class="quad-item" @click="goPublishArticle">
             <span class="quad-icon">📄</span>

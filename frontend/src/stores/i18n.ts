@@ -438,6 +438,23 @@ export const BASE_TEXT: Record<string, string> = {
   ai_video_auto_publishing: 'Publishing AI video…',
   ai_video_published_ok: 'AI video ready to publish',
   ai_video_target_duration_hint: 'Longer videos take more time',
+    // ── 视频直播页 ──
+  live_page_title: 'Live Stream',
+  live_title_ph: 'Enter live title',
+  live_category: 'Category',
+  live_moderator: 'Host',
+  live_viewer: 'Viewer',
+  live_you: 'You',
+  live_btn_gift: 'Gift',
+  live_btn_emoji: 'Emoji',
+  live_btn_call: 'Call',
+  live_btn_share: 'Share',
+  live_btn_like: 'Like',
+  live_no_messages: 'No messages yet',
+  live_input_ph: 'Say something…',
+  live_send: 'Send',
+  live_open: 'Go Live',
+  live_open_hint: 'Start a live stream',
 }
 
 export const LANGUAGES: Record<string, string> = {

@@ -32,10 +32,15 @@ import CreatorCenterView from '@/views/CreatorCenterView.vue'
 import ArticlePlayerView from '@/views/ArticlePlayerView.vue'
 import UserArticlesView from '@/views/UserArticlesView.vue'
 import SettingsPublishArticleView from '@/views/SettingsPublishArticleView.vue'
+
 const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
+
 import VideoRecorderView from '@/views/VideoRecorderView.vue'
 import AIVideoStudioView from '@/views/AIVideoStudioView.vue'
 import SettingsPublishVideoView from '@/views/SettingsPublishVideoView.vue'
+
+// ★ 新增：视频直播页
+import LiveStreamView from '@/views/LiveStreamView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -66,10 +71,11 @@ const router = createRouter({
     // ★ 新增：从视频播放页进入的评论 / 分享页
     { path: '/videos/:videoId/comments', name: 'video-comments', component: VideoCommentsView },
     { path: '/videos/:videoId/share', name: 'video-share', component: VideoShareView },
-          // ★ 新增：视频录制页
+    // ★ 新增：视频录制页
     { path: '/record-video', name: 'record-video', component: VideoRecorderView },
-        // ── 文章浏览页 ──
+    // ── 文章浏览页 ──
     { path: '/articles', name: 'articles', component: ArticlePlayerView },
+
     // ── 用户相关 ──
     { path: '/profile', name: 'profile-self', component: ProfileView },
     { path: '/profile/:userId', name: 'profile-user', component: ProfileView },
@@ -79,8 +85,13 @@ const router = createRouter({
     { path: '/user/:userId/products', name: 'user-products', component: ProductsView },
     { path: '/friends', name: 'friends', component: FriendsView },
     { path: '/user/:userId/articles', name: 'user-articles', component: UserArticlesView },
-      // routes 数组里加
+
+    // ── AI 视频工作室 ──
     { path: '/ai-video-studio', name: 'ai-video-studio', component: AIVideoStudioView },
+
+    // ★ 新增：视频直播页
+    { path: '/live', name: 'live', component: LiveStreamView },
+
     // ── 设置页及其子页 ──
     {
       path: '/settings/likes',
@@ -106,7 +117,6 @@ const router = createRouter({
       component: SettingsListPlaceholder,
       meta: { title: '私信', apiPath: '/api/messages/direct' },
     },
-
     {
       path: '/settings/channel',
       name: 'settings-channel',
@@ -160,22 +170,24 @@ const router = createRouter({
       component: SettingsListPlaceholder,
       meta: { title: '服务工具', apiPath: '/api/creator/tools' },
     },
-    // 三个"相机/直播/活动"占位页（后续实现）
+
+    // ── 发布相关 ──
     {
       path: '/settings/publish-video',
       name: 'settings-publish-video',
-      component: () => import('@/views/SettingsPublishVideoView.vue'),
+      component: SettingsPublishVideoView,
     },
     {
       path: '/settings/publish-article',
       name: 'settings-publish-article',
       component: SettingsPublishArticleView,
     },
+
+    // ★ 修改：发起直播 → 跳转到新的 /live 页面
     {
       path: '/settings/go-live',
       name: 'settings-go-live',
-      component: SettingsListPlaceholder,
-      meta: { title: '发起直播', apiPath: '' },
+      component: LiveStreamView,
     },
     {
       path: '/settings/launch-activity',
