@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
 
@@ -8,7 +8,7 @@ const router = useRouter()
 const i18n = useI18nStore()
 
 // ──────────────────────────────────────────────
-// 状态
+// 类别
 // ──────────────────────────────────────────────
 type LiveCategory =
   | 'medical' | 'health' | 'education' | 'entertainment' | 'travel'
@@ -29,21 +29,34 @@ const CATEGORIES: { value: LiveCategory; key: string }[] = [
   { value: 'ai',            key: 'AI' },
 ]
 
-const liveTitle = ref('')
-const liveCategory = ref<LiveCategory | null>(null)
+// ──────────────────────────────────────────────
+// 标题 / 类别：localStorage 记忆
+// ──────────────────────────────────────────────
+const TITLE_STORAGE_KEY = 'fdq95_live_title'
+const CATEGORY_STORAGE_KEY = 'fdq95_live_category'
 
-// 角色
+const liveTitle = ref(localStorage.getItem(TITLE_STORAGE_KEY) || '')
+const liveCategory = ref<LiveCategory | null>(
+  (localStorage.getItem(CATEGORY_STORAGE_KEY) as LiveCategory) || null
+)
+
+watch(liveTitle, (v) => localStorage.setItem(TITLE_STORAGE_KEY, v))
+watch(liveCategory, (v) => { if (v) localStorage.setItem(CATEGORY_STORAGE_KEY, v) })
+
+// ──────────────────────────────────────────────
+// 角色（仅用于顶部徽章，不传给 iframe）
+// ──────────────────────────────────────────────
 const isModerator = computed(() => route.query.role === 'moderator')
 
 // ──────────────────────────────────────────────
 // 嵌入式 URL
 // ──────────────────────────────────────────────
-// ★ 视频会议：直接指向 /remote/ 登录页
 const VIDEO_CALL_BASE = import.meta.env.VITE_VIDEO_CALL_URL
   || 'https://video-call.fdq95.com'
+
+// ★ 视频会议：直接嵌 /remote（无尾斜杠）——Join meeting 页面
 const videoCallUrl = computed(() => `${VIDEO_CALL_BASE}/remote`)
 
-// ★ 场地相机
 const FIELD_CAMERA_URL = import.meta.env.VITE_FIELD_CAMERA_URL
   || 'https://webcam.fdq95.com'
 
@@ -62,7 +75,6 @@ function sendChatMessage() {
     time: new Date().toLocaleTimeString(),
   })
   chatMessage.value = ''
-  // TODO: WebSocket / SSE 发送
 }
 
 // ──────────────────────────────────────────────
@@ -77,20 +89,23 @@ function onShare() {
 function onLike()  { console.log('[Live] Like') }
 
 // ──────────────────────────────────────────────
-// 导航
+// 导航 / 生命周期
 // ──────────────────────────────────────────────
 function goBack() { router.back() }
 
 onMounted(() => {
-  // 保持页面占满视口，无滚动
   document.documentElement.style.overflow = 'hidden'
   document.body.style.overflow = 'hidden'
+})
+onBeforeUnmount(() => {
+  document.documentElement.style.overflow = ''
+  document.body.style.overflow = ''
 })
 </script>
 
 <template>
   <div class="live-page">
-    <!-- ── 顶部：返回 + 标题（单独一排） ── -->
+    <!-- 第一排：返回 + 标题 + 角色 -->
     <div class="title-row">
       <button type="button" class="back-btn" @click="goBack">‹</button>
       <input
@@ -107,7 +122,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ── 类别（单独一排） ── -->
+    <!-- 第二排：类别（占满整行） -->
     <div class="category-row">
       <select v-model="liveCategory" class="live-category-select">
         <option :value="null" disabled>
@@ -119,12 +134,12 @@ onMounted(() => {
       </select>
     </div>
 
-    <!-- ── 主体：左视频会议 + 右场地相机/观众输入 ── -->
+    <!-- 主体 -->
     <main class="live-body">
-      <!-- 左列 -->
       <section class="left-col">
         <div class="video-frame">
           <iframe
+            :key="videoCallUrl"
             :src="videoCallUrl"
             class="video-call-iframe"
             frameborder="0"
@@ -157,7 +172,6 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- 右列 -->
       <aside class="right-col">
         <div class="field-camera-frame">
           <iframe
@@ -208,9 +222,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ──────────────────────────────────────────────
-   整页布局：满屏、无滚动
-   ────────────────────────────────────────────── */
 .live-page {
   display: flex;
   flex-direction: column;
@@ -222,7 +233,7 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* ── 第一排：返回 + 标题 ── */
+/* 第一排 */
 .title-row {
   display: flex;
   align-items: center;
@@ -269,7 +280,7 @@ onMounted(() => {
   border: 1px solid #e5b80b;
 }
 
-/* ── 第二排：类别 ── */
+/* 第二排：类别（占满整行） */
 .category-row {
   padding: 0.4rem 0.8rem;
   background: #0d0d0d;
@@ -284,10 +295,10 @@ onMounted(() => {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
   width: 100%;
-  max-width: 220px;
+  box-sizing: border-box;
 }
 
-/* ── 主体：左右两列 ── */
+/* 主体 */
 .live-body {
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -298,7 +309,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* 左列 */
 .left-col {
   display: flex;
   flex-direction: column;
@@ -357,7 +367,6 @@ onMounted(() => {
   border-color: #e74c3c;
 }
 
-/* 右列 */
 .right-col {
   display: flex;
   flex-direction: column;
@@ -447,32 +456,19 @@ onMounted(() => {
 }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ──────────────────────────────────────────────
-   响应式
-   ────────────────────────────────────────────── */
+/* 响应式 */
 @media (max-width: 900px) {
-  .live-body {
-    grid-template-columns: 1fr;
-  }
+  .live-body { grid-template-columns: 1fr; }
   .right-col {
     flex-direction: row;
     align-items: flex-start;
   }
-  .field-camera-frame {
-    flex: 1;
-  }
-  .audience-panel {
-    flex: 1;
-    max-height: 260px;
-  }
+  .field-camera-frame { flex: 1; }
+  .audience-panel { flex: 1; max-height: 260px; }
 }
 
 @media (max-width: 600px) {
-  .live-body {
-    grid-template-columns: 1fr;
-    gap: 0.4rem;
-    padding: 0.4rem;
-  }
+  .live-body { grid-template-columns: 1fr; gap: 0.4rem; padding: 0.4rem; }
   .right-col { flex-direction: column; }
   .action-btn .label { font-size: 0.6rem; }
   .action-btn .icon { font-size: 0.95rem; }
