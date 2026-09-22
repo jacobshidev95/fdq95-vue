@@ -30,7 +30,7 @@ const CATEGORIES: { value: LiveCategory; key: string }[] = [
 ]
 
 // ──────────────────────────────────────────────
-// 标题 / 类别：localStorage 记忆
+// 标题 / 类别
 // ──────────────────────────────────────────────
 const TITLE_STORAGE_KEY = 'fdq95_live_title'
 const CATEGORY_STORAGE_KEY = 'fdq95_live_category'
@@ -57,18 +57,10 @@ const videoCallUrl = computed(() => `${VIDEO_CALL_BASE}/remote`)
 const FIELD_CAMERA_BASE = import.meta.env.VITE_FIELD_CAMERA_URL
   || 'https://webcam.fdq95.com'
 
-// ★ 主持人 → 完整控制面板；观众 → 只读视图
-//   如果 webcam 不支持参数，改成 `${FIELD_CAMERA_BASE}` 并靠 CSS 隐藏控制
 const fieldCameraUrl = computed(() => {
   if (isModerator.value) return FIELD_CAMERA_BASE
   return `${FIELD_CAMERA_BASE}?readonly=1`
 })
-
-// 观众视角下用 CSS 遮住底部控制区（后备方案）
-const fieldCameraWrapClass = computed(() => ({
-  'field-camera-frame': true,
-  'viewer-mode': !isModerator.value,
-}))
 
 // ──────────────────────────────────────────────
 // 观众文字
@@ -115,7 +107,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="live-page">
-    <!-- 顶部：标题 + 类别（紧凑两排） -->
+    <!-- 顶部：标题 + 类别 -->
     <div class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -145,8 +137,9 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 主体（可滚动区域） -->
+    <!-- 主体 -->
     <main class="live-body">
+      <!-- 左列：视频 + 5 个按钮（按钮宽度 = 视频宽度） -->
       <section class="left-col">
         <div class="video-frame">
           <iframe
@@ -154,14 +147,38 @@ onBeforeUnmount(() => {
             :src="videoCallUrl"
             class="video-call-iframe"
             frameborder="0"
-            allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+            allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; screen-wake-lock"
           />
+        </div>
+
+        <!-- ★ 5 个按钮：flex 均匀分布，总宽度 = 视频宽度 -->
+        <div class="action-bar">
+          <button type="button" class="action-btn" @click="onGift">
+            <span class="icon">🎁</span>
+            <span class="label">{{ i18n.t('live_btn_gift') || 'Gift' }}</span>
+          </button>
+          <button type="button" class="action-btn" @click="onEmoji">
+            <span class="icon">😊</span>
+            <span class="label">{{ i18n.t('live_btn_emoji') || 'Emoji' }}</span>
+          </button>
+          <button type="button" class="action-btn" @click="onCall">
+            <span class="icon">📞</span>
+            <span class="label">{{ i18n.t('live_btn_call') || 'Call' }}</span>
+          </button>
+          <button type="button" class="action-btn" @click="onShare">
+            <span class="icon">📤</span>
+            <span class="label">{{ i18n.t('live_btn_share') || 'Share' }}</span>
+          </button>
+          <button type="button" class="action-btn like" @click="onLike">
+            <span class="icon">❤️</span>
+            <span class="label">{{ i18n.t('live_btn_like') || 'Like' }}</span>
+          </button>
         </div>
       </section>
 
+      <!-- 右列：场地相机 + 观众文字 + 输入框 -->
       <aside class="right-col">
-        <div :class="fieldCameraWrapClass">
+        <div class="field-camera-frame">
           <iframe
             :src="fieldCameraUrl"
             class="field-camera-iframe"
@@ -171,6 +188,7 @@ onBeforeUnmount(() => {
           />
         </div>
 
+        <!-- 观众消息 + 底部输入框 -->
         <div class="audience-panel">
           <div class="audience-messages">
             <div v-if="chatMessages.length === 0" class="empty-hint">
@@ -186,73 +204,48 @@ onBeforeUnmount(() => {
               <span class="msg-time">{{ msg.time }}</span>
             </div>
           </div>
+
+          <!-- ★ 输入框 + 发送按钮：观众消息区下方 -->
+          <div class="audience-input-row">
+            <input
+              v-model="chatMessage"
+              type="text"
+              class="audience-input"
+              :placeholder="i18n.t('live_input_ph') || 'Say something…'"
+              @keyup.enter="sendChatMessage"
+            />
+            <button
+              type="button"
+              class="send-btn"
+              :disabled="!chatMessage.trim()"
+              @click="sendChatMessage"
+            >
+              {{ i18n.t('live_send') || 'Send' }}
+            </button>
+          </div>
         </div>
       </aside>
     </main>
-
-    <!-- ★ 底部固定操作栏：5 个按钮 + 文字输入（不再被挤掉） -->
-    <footer class="live-footer">
-      <div class="action-bar">
-        <button type="button" class="action-btn" @click="onGift">
-          <span class="icon">🎁</span>
-          <span class="label">{{ i18n.t('live_btn_gift') || 'Gift' }}</span>
-        </button>
-        <button type="button" class="action-btn" @click="onEmoji">
-          <span class="icon">😊</span>
-          <span class="label">{{ i18n.t('live_btn_emoji') || 'Emoji' }}</span>
-        </button>
-        <button type="button" class="action-btn" @click="onCall">
-          <span class="icon">📞</span>
-          <span class="label">{{ i18n.t('live_btn_call') || 'Call' }}</span>
-        </button>
-        <button type="button" class="action-btn" @click="onShare">
-          <span class="icon">📤</span>
-          <span class="label">{{ i18n.t('live_btn_share') || 'Share' }}</span>
-        </button>
-        <button type="button" class="action-btn like" @click="onLike">
-          <span class="icon">❤️</span>
-          <span class="label">{{ i18n.t('live_btn_like') || 'Like' }}</span>
-        </button>
-      </div>
-
-      <div class="audience-input-row">
-        <input
-          v-model="chatMessage"
-          type="text"
-          class="audience-input"
-          :placeholder="i18n.t('live_input_ph') || 'Say something…'"
-          @keyup.enter="sendChatMessage"
-        />
-        <button
-          type="button"
-          class="send-btn"
-          :disabled="!chatMessage.trim()"
-          @click="sendChatMessage"
-        >
-          {{ i18n.t('live_send') || 'Send' }}
-        </button>
-      </div>
-    </footer>
   </div>
 </template>
 
 <style scoped>
 /* ──────────────────────────────────────────────
-   整页布局：满屏 + 上下固定 + 中间滚动
+   整页布局
    ────────────────────────────────────────────── */
 .live-page {
   display: flex;
   flex-direction: column;
   width: 100vw;
   height: 100vh;
-  height: 100dvh;               /* ★ 手机端动态高度 */
+  height: 100dvh;
   background: #000;
   color: #fff;
   overflow: hidden;
   box-sizing: border-box;
 }
 
-/* ── 顶部（标题 + 类别，固定不滚动） ── */
+/* ── 顶部（固定） ── */
 .live-top {
   flex-shrink: 0;
   background: #0d0d0d;
@@ -314,7 +307,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-/* ── 中间主体（左右两列，可滚动） ── */
+/* ── 中间主体 ── */
 .live-body {
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -324,9 +317,12 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
 }
+
+/* ── 左列：视频 + 5 个按钮 ── */
 .left-col {
   display: flex;
   flex-direction: column;
+  gap: 0.4rem;
   min-height: 0;
 }
 .video-frame {
@@ -344,6 +340,43 @@ onBeforeUnmount(() => {
   border: 0;
 }
 
+/* ★ 5 个按钮：横向 flex，总宽度 = 左列宽度（=视频宽度） */
+.action-bar {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0;
+  flex-shrink: 0;
+}
+.action-btn {
+  flex: 1 1 0;              /* ★ 均分宽度，正好撑满视频宽度 */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.45rem 0.2rem;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.action-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: #8b5cf6;
+}
+.action-btn .icon { font-size: 1.1rem; }
+.action-btn .label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+.action-btn.like:hover {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: #e74c3c;
+}
+
+/* ── 右列：场地相机 + 观众消息 + 输入框 ── */
 .right-col {
   display: flex;
   flex-direction: column;
@@ -357,7 +390,6 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #222;
-  position: relative;
 }
 .field-camera-iframe {
   width: 100%;
@@ -366,22 +398,7 @@ onBeforeUnmount(() => {
   border: 0;
 }
 
-/* ★ 观众模式：遮住 iframe 底部控制面板区域 */
-.field-camera-frame.viewer-mode {
-  /* 若有控制条，用伪元素遮住底部 15% */
-  position: relative;
-}
-.field-camera-frame.viewer-mode::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 0;              /* 先设为 0；如果观众能看到控制条，改成 20% 左右 */
-  background: #000;
-  pointer-events: none;
-}
-
+/* ★ 观众消息区（含底部输入框） */
 .audience-panel {
   flex: 1 1 auto;
   min-height: 0;
@@ -420,55 +437,14 @@ onBeforeUnmount(() => {
   margin-left: 0.35rem;
 }
 
-/* ── ★ 底部固定栏（永远显示） ── */
-.live-footer {
-  flex-shrink: 0;
-  background: #0d0d0d;
-  border-top: 1px solid #222;
-  padding: 0.4rem 0.5rem 0.5rem;
-  box-sizing: border-box;
-}
-
-.action-bar {
-  display: flex;
-  gap: 0.3rem;
-  padding: 0.25rem;
-  background: #111;
-  border-radius: 8px;
-  margin-bottom: 0.4rem;
-}
-.action-btn {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0.3rem 0.15rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.action-btn:hover {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: #8b5cf6;
-}
-.action-btn .icon { font-size: 1.05rem; }
-.action-btn .label {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.75);
-}
-.action-btn.like:hover {
-  background: rgba(231, 76, 60, 0.15);
-  border-color: #e74c3c;
-}
-
+/* ★ 输入框 + 发送：观众消息区下方 */
 .audience-input-row {
   display: flex;
   gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  background: #0d0d0d;
+  border-top: 1px solid #222;
+  flex-shrink: 0;
 }
 .audience-input {
   flex: 1;
@@ -494,14 +470,14 @@ onBeforeUnmount(() => {
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ──────────────────────────────────────────────
-   移动端（<900px）：改为纵向布局
+   响应式
    ────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .live-body {
     grid-template-columns: 1fr;
     gap: 0.4rem;
     padding: 0.4rem;
-    overflow-y: auto;         /* 中间区域可滚动 */
+    overflow-y: auto;
   }
   .right-col {
     flex-direction: row;
@@ -516,21 +492,14 @@ onBeforeUnmount(() => {
     padding: 0.35rem;
     gap: 0.35rem;
   }
-  .right-col {
-    flex-direction: column;
-  }
-  .field-camera-frame {
-    aspect-ratio: 16 / 9;
-  }
-  .audience-panel {
-    max-height: 180px;
-  }
+  .right-col { flex-direction: column; }
+  .field-camera-frame { aspect-ratio: 16 / 9; }
+  .audience-panel { max-height: 180px; }
   .action-btn .label { font-size: 0.58rem; }
   .action-btn .icon { font-size: 0.95rem; }
   .title-row { padding: 0.35rem 0.5rem; }
   .category-row { padding: 0.3rem 0.5rem 0.45rem; }
   .live-title-input { font-size: 0.85rem; }
   .live-category-select { font-size: 0.8rem; }
-  .live-footer { padding: 0.35rem 0.4rem 0.45rem; }
 }
 </style>
