@@ -41,7 +41,7 @@ const isModerator = computed(() => route.query.role === 'moderator')
 // ★ 视频会议：直接指向 /remote/ 登录页
 const VIDEO_CALL_BASE = import.meta.env.VITE_VIDEO_CALL_URL
   || 'https://video-call.fdq95.com'
-const videoCallUrl = computed(() => `${VIDEO_CALL_BASE}/remote/`)
+const videoCallUrl = computed(() => `${VIDEO_CALL_BASE}/remote`)
 
 // ★ 场地相机
 const FIELD_CAMERA_URL = import.meta.env.VITE_FIELD_CAMERA_URL
