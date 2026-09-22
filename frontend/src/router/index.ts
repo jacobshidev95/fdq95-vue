@@ -90,7 +90,7 @@ const router = createRouter({
     { path: '/ai-video-studio', name: 'ai-video-studio', component: AIVideoStudioView },
 
     // ★ 新增：视频直播页
-    { path: '/live', name: 'live', component: LiveStreamView },
+    { path: '/live', name: 'live', component: LiveStreamView, meta: { hideChrome: true } },
 
     // ── 设置页及其子页 ──
     {

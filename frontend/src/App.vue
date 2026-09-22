@@ -13,7 +13,7 @@ const route = useRoute()
 // Home uses full-bleed 3-column layout
 const isHome = computed(() => route.path === '/')
 
-// ★ 沉浸式全屏页面：/videos、/articles、发布视频、发布文章
+// ★ 沉浸式全屏页面：/videos、/articles、发布视频、发布文章、直播
 const isVideoFullscreen = computed(() => {
   const p = route.path
   return (
@@ -21,6 +21,7 @@ const isVideoFullscreen = computed(() => {
     p.startsWith('/articles') ||
     p.startsWith('/record-video') ||                 // ★ 新增
     p.startsWith('/ai-video-studio') ||      // ★ 新增
+    p.startsWith('/live') ||                 // ★ 新增：视频直播页
     p.startsWith('/settings/publish-video') ||
     p.startsWith('/settings/publish-article')
   )
