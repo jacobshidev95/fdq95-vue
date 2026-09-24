@@ -72,6 +72,11 @@ function openVideoPlayer() {
 function openLiveHall() {
   router.push('/live')
 }
+
+// ★ 新增：点击 Activity 按钮跳转到 Activity 直播（带分类筛选）
+function openActivityLive() {
+  router.push({ path: '/live', query: { category: 'activity' } })
+}
 </script>
 
 <template>
@@ -90,9 +95,13 @@ function openLiveHall() {
       <button class="tab-btn play-btn" @click="openVideoPlayer">
         ▶ {{ i18n.t('play_video') }}
       </button>
-      <!-- ★ 新增：直播按钮 -->
+      <!-- ★ 直播按钮 -->
       <button class="tab-btn live-btn" @click="openLiveHall">
         <span class="live-dot" /> {{ i18n.t('live') || '直播' }}
+      </button>
+      <!-- ★ 新增：Activity 按钮（Live 之后） -->
+      <button class="tab-btn activity-btn" @click="openActivityLive">
+        <span class="activity-dot" /> {{ i18n.t('activity') || '活动' }}
       </button>
     </nav>
 
@@ -173,7 +182,7 @@ function openLiveHall() {
   overflow-y: auto;
 }
 
-/* ---------- Tab bar: 6 equal-width buttons ---------- */
+/* ---------- Tab bar ---------- */
 .tab-bar {
   display: flex;
   flex-wrap: nowrap;
@@ -219,7 +228,7 @@ function openLiveHall() {
   color: #111;
 }
 
-/* ★ 新增：直播按钮样式（带脉冲红点） */
+/* ★ 直播按钮（红点脉冲） */
 .live-btn {
   display: inline-flex;
   align-items: center;
@@ -243,13 +252,37 @@ function openLiveHall() {
   flex-shrink: 0;
   animation: livePulse 1.2s infinite;
 }
-.live-btn:hover .live-dot {
-  background: #fff;
-}
+.live-btn:hover .live-dot { background: #fff; }
 @keyframes livePulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.4; transform: scale(0.8); }
 }
+
+/* ★ 新增：Activity 按钮（金点脉冲） */
+.activity-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #e5b80b;
+  border-color: #e5b80b;
+  font-weight: 600;
+}
+.activity-btn:hover {
+  background: linear-gradient(90deg, #e5b80b, #ff9500);
+  border-color: #ff9500;
+  color: #111;
+}
+.activity-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e5b80b;
+  flex-shrink: 0;
+  animation: livePulse 1.2s infinite;
+}
+.activity-btn:hover .activity-dot { background: #111; }
 
 /* ---------- Content ---------- */
 .tab-content {
@@ -339,5 +372,6 @@ function openLiveHall() {
   .service-grid { grid-template-columns: 1fr; }
   .tab-btn { font-size: 0.7rem; padding: 0.45rem 0.15rem; }
   .live-dot { width: 6px; height: 6px; }
+  .activity-dot { width: 6px; height: 6px; }
 }
 </style>

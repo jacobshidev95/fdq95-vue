@@ -3,31 +3,14 @@ import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore } from '@/stores/i18n'
+import CategorySelect from '@/components/CategorySelect.vue'
 
 const router = useRouter()
 const i18n = useI18nStore()
 
-type Category =
-  | 'medical' | 'health' | 'education' | 'entertainment' | 'travel'
-  | 'food' | 'clothing' | 'industry' | 'tech' | 'iot' | 'life' | 'ai'
-
-const CATEGORIES: { value: Category; key: string }[] = [
-  { value: 'medical', key: 'Medical' },
-  { value: 'health', key: 'Health' },
-  { value: 'education', key: 'Education' },
-  { value: 'entertainment', key: 'Entertainment' },
-  { value: 'travel', key: 'Travel' },
-  { value: 'food', key: 'Food' },
-  { value: 'clothing', key: 'Clothing' },
-  { value: 'industry', key: 'Industry' },
-  { value: 'tech', key: 'Technology' },
-  { value: 'iot', key: 'IoT' },
-  { value: 'life', key: 'Life' },
-  { value: 'ai', key: 'AI' },
-]
-
 const title = ref('')
-const category = ref<Category | null>(null)
+// ★ 分类改为 string | null，方便和 CategorySelect 的 v-model 类型对齐
+const category = ref<string | null>(null)
 // ★ 只剩两种内容类型：file / record
 const contentType = ref<'file' | 'record'>('file')
 
@@ -284,20 +267,14 @@ onBeforeUnmount(() => {
         />
       </section>
 
-      <!-- 类别 -->
+      <!-- 类别：改为 COMBOX -->
       <section class="card">
         <label class="field-label">{{ i18n.t('publish_video_category') }}</label>
-        <div class="radio-grid">
-          <label v-for="cat in CATEGORIES" :key="cat.value" class="radio-item">
-            <input
-              type="radio"
-              name="category"
-              :value="cat.value"
-              v-model="category"
-            />
-            <span>{{ cat.key }}</span>
-          </label>
-        </div>
+        <CategorySelect
+          v-model="category"
+          storage-key="fdq95_category_last"
+          :placeholder="i18n.t('publish_video_category') || '选择分类'"
+        />
       </section>
 
       <!-- 内容方式：只剩 2 个 tab -->
@@ -374,7 +351,6 @@ onBeforeUnmount(() => {
           </button>
           <p class="hint">{{ i18n.t('record_video_open_hint') }}</p>
 
-          <!-- ★★★ 新增：智能视频按钮（紫色渐变） -->
           <button
             type="button"
             class="ai-video-btn"
@@ -479,26 +455,6 @@ onBeforeUnmount(() => {
 }
 .title-input:focus { outline: none; border-color: #e5b80b; }
 
-.radio-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem 0.75rem;
-}
-.radio-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-}
-.radio-item input { width: auto; margin: 0; accent-color: #e5b80b; }
-.radio-item span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .type-tabs {
   display: flex;
   gap: 0.4rem;
@@ -535,7 +491,6 @@ onBeforeUnmount(() => {
 }
 .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* 上传进度条 */
 .progress-container {
   margin-top: 0.85rem;
   padding: 0.6rem 0.75rem;
@@ -593,7 +548,6 @@ onBeforeUnmount(() => {
   font-weight: 400;
 }
 
-/* 打开录像页按钮：紫色 */
 .record-open-btn {
   width: 100%;
   background: #8b5cf6;
@@ -613,7 +567,6 @@ onBeforeUnmount(() => {
 }
 .record-open-btn:hover { background: #7c3aed; }
 
-/* ★★★ 智能视频按钮：紫色渐变 */
 .ai-video-btn {
   width: 100%;
   margin-top: 0.75rem;
@@ -694,9 +647,5 @@ onBeforeUnmount(() => {
   background: rgba(46, 204, 113, 0.15);
   border: 1px solid #2ecc71;
   color: #a5f5c6;
-}
-
-@media (max-width: 720px) {
-  .radio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

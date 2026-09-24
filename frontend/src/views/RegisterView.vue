@@ -6,6 +6,8 @@ import { useI18nStore } from '@/stores/i18n'
 import { api } from '@/api/client'
 import { COUNTRIES } from '@/data/countries'
 import { getRegionsByCountry } from '@/data/regions'
+// ★ 新增：引入通用分类 COMBOX 组件
+import CategorySelect from '@/components/CategorySelect.vue'
 
 const i18n = useI18nStore()
 const router = useRouter()
@@ -14,21 +16,6 @@ type Role = 'provider' | 'consumer'
 type Category =
   | 'medical' | 'health' | 'education' | 'entertainment' | 'travel'
   | 'food' | 'clothing' | 'industry' | 'tech' | 'iot' | 'life' | 'ai'
-
-const CATEGORIES: { value: Category; key: string }[] = [
-  { value: 'medical', key: 'Medical' },
-  { value: 'health', key: 'Health' },
-  { value: 'education', key: 'Education' },
-  { value: 'entertainment', key: 'Entertainment' },
-  { value: 'travel', key: 'Travel' },
-  { value: 'food', key: 'Food' },
-  { value: 'clothing', key: 'Clothing' },
-  { value: 'industry', key: 'Industry' },
-  { value: 'tech', key: 'Technology' },
-  { value: 'iot', key: 'IoT' },
-  { value: 'life', key: 'Life' },
-  { value: 'ai', key: 'AI' },
-]
 
 const currentYear = new Date().getFullYear()
 const BIRTH_YEARS = Array.from({ length: 91 }, (_, i) => currentYear - 10 - i)
@@ -114,6 +101,12 @@ watch(
 )
 
 onMounted(async () => {
+  // ★ 恢复上次选择的分类（如果表单里还没有值）
+  const saved = localStorage.getItem('fdq95_register_category')
+  if (saved && !form.service_category) {
+    form.service_category = saved as Category
+  }
+
   try {
     const resp = await fetch('https://ipapi.co/json/', { cache: 'no-store' })
     if (!resp.ok) return
@@ -172,7 +165,6 @@ async function submit() {
     service_category: form.service_category,
     first_name: form.first_name || null,
     last_name: form.last_name || null,
-    // ★ 注册用户等级固定为 0（后端会忽略此值，但显式声明意图）
     customer_level: NEW_USER_CUSTOMER_LEVEL,
   }
   if (form.role === 'provider') {
@@ -303,20 +295,13 @@ async function submit() {
     </p>
 
     <label>{{ i18n.t('service_category') }} *</label>
-    <!-- ★ 从 checkbox 改成 radio：单选 -->
-    <div class="radio-grid">
-      <label v-for="cat in CATEGORIES" :key="cat.value" class="radio-item">
-        <input
-          type="radio"
-          name="service_category"
-          :value="cat.value"
-          v-model="form.service_category"
-        />
-        <span>{{ cat.key }}</span>
-      </label>
-    </div>
+    <!-- ★ 分类选择：COMBOX（搜索 + 记忆上次选择） -->
+    <CategorySelect
+      v-model="form.service_category"
+      storage-key="fdq95_register_category"
+      :placeholder="i18n.t('select_category') || '选择分类'"
+    />
 
-    <!-- ★ 新增：客户等级（只读，注册时固定 0） -->
     <label>{{ i18n.t('customer_level') }}</label>
     <input
       :value="NEW_USER_CUSTOMER_LEVEL"
@@ -354,20 +339,6 @@ async function submit() {
 .register-card { position: relative; width: 100%; max-width: 680px; }
 .card-title { text-align: center; margin: 0 0 1rem; }
 
-/* ★ radio 网格（从 checkbox-grid 改名而来，样式一致） */
-.radio-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem 0.75rem;
-  margin-top: 0.35rem;
-}
-.radio-item {
-  display: inline-flex; align-items: center; gap: 0.4rem; margin: 0;
-  color: var(--text); cursor: pointer; user-select: none;
-}
-.radio-item input { width: auto; margin: 0; accent-color: var(--gold); }
-.radio-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 /* ★ 只读输入框视觉 */
 .readonly-input {
   background: rgba(255, 255, 255, 0.04);
@@ -404,9 +375,6 @@ async function submit() {
 }
 .close-btn:hover { color: var(--gold); }
 
-@media (max-width: 720px) {
-  .radio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 480px) {
   .phone-row { flex-direction: column; align-items: stretch; }
   .dial-select { flex: 1; }
