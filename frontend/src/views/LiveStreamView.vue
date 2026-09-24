@@ -110,6 +110,13 @@ function sendChatMessage() {
   chatMessage.value = ''
 }
 
+// ★ 新增：模板里需要，不能直接用 navigator/window
+function shareRoom() {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(window.location.href)
+  }
+}
+
 async function openInvite() {
   showInvite.value = true
   try {
@@ -161,7 +168,7 @@ onBeforeUnmount(() => {
           v-model="liveTitle"
           type="text"
           class="live-title-input"
-          :placeholder="'直播标题'"
+          placeholder="直播标题"
           maxlength="120"
           :disabled="!isHost"
           @blur="saveTitleAndCategory"
@@ -174,7 +181,7 @@ onBeforeUnmount(() => {
         <CategorySelect
           v-model="liveCategory"
           storage-key="fdq95_live_category"
-          :placeholder="'选择分类'"
+          placeholder="选择分类"
           :disabled="!isHost"
         />
       </div>
@@ -216,7 +223,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="action-btn"
-            @click="navigator.clipboard?.writeText(window.location.href)"
+            @click="shareRoom"
           >📤<span class="label">分享</span></button>
           <button type="button" class="action-btn like">❤️<span class="label">喜欢</span></button>
           <button
@@ -307,7 +314,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* 沿用你原 LiveStreamView.vue 的样式 */
 .live-page {
   display: flex; flex-direction: column;
   width: 100vw; height: 100vh; height: 100dvh;
