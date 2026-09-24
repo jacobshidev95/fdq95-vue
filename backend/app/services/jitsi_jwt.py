@@ -44,7 +44,7 @@ def create_jitsi_token(
     """签发一个 Jitsi JWT，默认 2 小时有效。"""
     now = int(time.time())
     payload = {
-        "aud": "jitsi",
+        "aud": _app_id(),
         "iss": _app_id(),
         "sub": _sub(),
         "room": room,
