@@ -67,6 +67,11 @@ const TABS: { key: Tab; labelKey: string }[] = [
 function openVideoPlayer() {
   router.push('/videos')
 }
+
+// ★ 新增：点击直播按钮跳转到直播大厅
+function openLiveHall() {
+  router.push('/live')
+}
 </script>
 
 <template>
@@ -84,6 +89,10 @@ function openVideoPlayer() {
       </button>
       <button class="tab-btn play-btn" @click="openVideoPlayer">
         ▶ {{ i18n.t('play_video') }}
+      </button>
+      <!-- ★ 新增：直播按钮 -->
+      <button class="tab-btn live-btn" @click="openLiveHall">
+        <span class="live-dot" /> {{ i18n.t('live') || '直播' }}
       </button>
     </nav>
 
@@ -210,6 +219,38 @@ function openVideoPlayer() {
   color: #111;
 }
 
+/* ★ 新增：直播按钮样式（带脉冲红点） */
+.live-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #ff4d4d;
+  border-color: #ff4d4d;
+  font-weight: 600;
+}
+.live-btn:hover {
+  background: linear-gradient(90deg, #8b5cf6, #ff4d4d);
+  border-color: #ff4d4d;
+  color: #fff;
+}
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff4d4d;
+  flex-shrink: 0;
+  animation: livePulse 1.2s infinite;
+}
+.live-btn:hover .live-dot {
+  background: #fff;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
+}
+
 /* ---------- Content ---------- */
 .tab-content {
   padding: 1.25rem 1.5rem 2rem;
@@ -297,5 +338,6 @@ function openVideoPlayer() {
 @media (max-width: 700px) {
   .service-grid { grid-template-columns: 1fr; }
   .tab-btn { font-size: 0.7rem; padding: 0.45rem 0.15rem; }
+  .live-dot { width: 6px; height: 6px; }
 }
 </style>

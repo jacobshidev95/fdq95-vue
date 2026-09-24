@@ -32,6 +32,8 @@ import CreatorCenterView from '@/views/CreatorCenterView.vue'
 import ArticlePlayerView from '@/views/ArticlePlayerView.vue'
 import UserArticlesView from '@/views/UserArticlesView.vue'
 import SettingsPublishArticleView from '@/views/SettingsPublishArticleView.vue'
+import LiveHallView from '@/views/LiveHallView.vue'
+import StartLiveView from '@/views/StartLiveView.vue'
 
 const ADMIN_LEVELS = ['level_0', 'level_1', 'level_2']
 
@@ -90,7 +92,10 @@ const router = createRouter({
     { path: '/ai-video-studio', name: 'ai-video-studio', component: AIVideoStudioView },
 
     // ★ 新增：视频直播页
-    { path: '/live', name: 'live', component: LiveStreamView, meta: { hideChrome: true } },
+
+    { path: '/live',              name: 'live-hall', component: LiveHallView,    meta: { hideChrome: true } },
+    { path: '/live/:roomId',      name: 'live-room', component: LiveStreamView,  meta: { hideChrome: true } },
+    { path: '/live/:roomId/host', name: 'live-host', component: LiveStreamView,  meta: { hideChrome: true, host: true } },
 
     // ── 设置页及其子页 ──
     {
@@ -187,7 +192,7 @@ const router = createRouter({
     {
       path: '/settings/go-live',
       name: 'settings-go-live',
-      component: LiveStreamView,
+      component: StartLiveView,
     },
     {
       path: '/settings/launch-activity',

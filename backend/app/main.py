@@ -25,6 +25,7 @@ from app.routers import (
     friends,
     follows,
     jobs,
+    live,
     messages,
     products,
     profile,
@@ -131,6 +132,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # app.include_router(ai_video.router, prefix="/api/ai-video", tags=["ai-video"])
 # 在 app = FastAPI(...) 之后，添加路由注册
 app.include_router(ai_video.router)
+app.include_router(live.router, prefix="/api/live", tags=["live"])
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
