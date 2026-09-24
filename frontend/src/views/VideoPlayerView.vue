@@ -323,6 +323,9 @@ function goSearch() { router.push('/search') }
 function goSettings() { router.push('/settings') }
 function goArticles() { router.push('/articles') }
 
+// ★ 新增：点击 Live 按钮跳转到直播大厅
+function goLive() { router.push('/live') }
+
 async function onAvatarClick() {
   if (!currentVideo.value) return
   router.push(`/profile/${currentVideo.value.owner_string_id}`)
@@ -392,16 +395,26 @@ onBeforeUnmount(() => {
   <div class="video-page">
     <header class="top-bar">
       <div class="tab-group">
-        <button
-          v-for="t in FEED_TABS"
-          :key="t.key"
-          class="tab-btn"
-          :class="{ active: activeTab === t.key }"
-          @click="selectTab(t.key)"
-        >
-          <span class="tab-icon">{{ t.icon }}</span>
-          <span class="tab-label">{{ t.label }}</span>
-        </button>
+        <!-- ★ 在 recommend 和 activity 之间插入 Live 按钮 -->
+        <template v-for="t in FEED_TABS" :key="t.key">
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === t.key }"
+            @click="selectTab(t.key)"
+          >
+            <span class="tab-icon">{{ t.icon }}</span>
+            <span class="tab-label">{{ t.label }}</span>
+          </button>
+          <button
+            v-if="t.key === 'recommend'"
+            class="tab-btn live-btn"
+            @click="goLive"
+            :title="i18n.t('live') || '直播'"
+          >
+            <span class="live-dot" />
+            <span class="tab-label">{{ i18n.t('live') || 'Live' }}</span>
+          </button>
+        </template>
       </div>
       <div class="right-actions">
         <button class="icon-btn" :title="i18n.t('tab_search')" @click="goSearch">🔍</button>
@@ -620,6 +633,34 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .tab-icon { font-size: 0.9rem; }
+
+/* ★ 新增：Live 按钮（红点脉冲，hover 变渐变背景） */
+.live-btn {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.08);
+  border: 1px solid rgba(255, 77, 77, 0.35);
+  font-weight: 600;
+}
+.live-btn:hover {
+  color: #fff;
+  background: linear-gradient(90deg, #8b5cf6, #ff4d4d);
+  border-color: #ff4d4d;
+}
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff4d4d;
+  flex-shrink: 0;
+  animation: livePulse 1.2s infinite;
+}
+.live-btn:hover .live-dot { background: #fff; }
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
+}
+
 .right-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .icon-btn {
   background: transparent;
