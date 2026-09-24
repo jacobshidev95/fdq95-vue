@@ -51,7 +51,7 @@ const isModerator = computed(() => route.query.role === 'moderator')
 // 嵌入式 URL
 // ──────────────────────────────────────────────
 const VIDEO_CALL_BASE = import.meta.env.VITE_VIDEO_CALL_URL
-  || 'https://video-call.fdq95.com'
+  || 'https://video-broadcast.fdq95.com'
 const videoCallUrl = computed(() => `${VIDEO_CALL_BASE}/remote`)
 
 const FIELD_CAMERA_BASE = import.meta.env.VITE_FIELD_CAMERA_URL
