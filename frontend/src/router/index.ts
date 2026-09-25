@@ -44,6 +44,8 @@ import SettingsPublishVideoView from '@/views/SettingsPublishVideoView.vue'
 // ★ 新增：视频直播页
 import LiveStreamView from '@/views/LiveStreamView.vue'
 import UserLiveReplaysView from '@/views/UserLiveReplaysView.vue'
+import ActivityStreamView from '@/views/ActivityStreamView.vue'
+import ActivityStartView from '@/views/ActivityStartView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -98,6 +100,15 @@ const router = createRouter({
     { path: '/live/:roomId',      name: 'live-room', component: LiveStreamView,  meta: { hideChrome: true } },
     { path: '/live/:roomId/host', name: 'live-host', component: LiveStreamView,  meta: { hideChrome: true, host: true } },
     { path: '/user/:userId/live-replays', name: 'user-live-replays', component: UserLiveReplaysView },
+    // ★ 活动（客户活动模板）
+    { path: '/activity',              name: 'activity-hall', component: LiveHallView,       meta: { hideChrome: true } },
+    { path: '/activity/:roomId',      name: 'activity-room', component: ActivityStreamView, meta: { hideChrome: true } },
+    { path: '/activity/:roomId/host', name: 'activity-host', component: ActivityStreamView, meta: { hideChrome: true, host: true } },
+    {
+      path: '/settings/go-activity',
+      name: 'settings-go-activity',
+      component: ActivityStartView,
+    },
     // ── 设置页及其子页 ──
     {
       path: '/settings/likes',

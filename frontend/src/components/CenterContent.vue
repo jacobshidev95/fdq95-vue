@@ -73,7 +73,7 @@ function openLiveHall() {
 }
 
 function openActivityLive() {
-  router.push({ path: '/live', query: { category: 'activity' } })
+  router.push('/activity')
 }
 </script>
 

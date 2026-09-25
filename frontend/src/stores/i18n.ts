@@ -471,6 +471,30 @@ export const BASE_TEXT: Record<string, string> = {
   friend_already: 'You are already friends',
   friend_request_already_sent: 'Friend request already sent, please wait',
   action_failed_retry: 'Action failed, please try again',
+  // ── 客户活动模板 ──
+  activity_title_ph: 'Enter activity title',
+  activity_category: 'Activity Category',
+  activity_fullscreen: 'Fullscreen',
+  activity_exit_fullscreen: 'Exit Fullscreen',
+  activity_fullscreen_disabled: 'Please set title and category first',
+  activity_btn_invite: 'Invite',
+  activity_btn_end: 'End',
+  activity_invite_title: 'Invite friends to activity',
+  activity_invited_count: 'Invited',
+  activity_none: 'None',
+  activity_invite_btn: 'Invite',
+  activity_invited: 'Invited',
+
+  // ── 活动右侧面板 ──
+  activity_stats_title: 'Activity Statistics',
+  activity_stats_placeholder: 'Activity statistics panel — to be designed',
+  personal_stats_title: 'My Statistics',
+  personal_stats_placeholder: 'Personal statistics panel — to be designed',
+
+  // ── 个人数据上传 ──
+  personal_data_upload_btn: 'Upload My Data',
+  personal_data_upload_title: 'Upload Personal Data',
+  personal_data_upload_placeholder: 'Personal data upload form — to be designed',
 }
 
 export const LANGUAGES: Record<string, string> = {
