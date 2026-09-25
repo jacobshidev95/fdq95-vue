@@ -12,9 +12,13 @@ export function useRecording(options: UseRecordingOptions = {}) {
   const maxSizeMB = options.maxSizeMB ?? 400
 
   const isRecording = ref(false)
-  const duration = ref(0)         // 秒
+  const duration = ref(0)
   const sizeMB = ref(0)
   const autoStoppedReason = ref('')
+
+  // ★ 录制结束后保存 blob 与预览 URL（供预览弹窗播放）
+  const pendingBlob = ref<Blob | null>(null)
+  const pendingUrl = ref<string>('')
 
   let mediaRecorder: MediaRecorder | null = null
   let displayStream: MediaStream | null = null
@@ -44,18 +48,19 @@ export function useRecording(options: UseRecordingOptions = {}) {
       throw new Error('浏览器不支持录制 API')
     }
 
-    // 1. 请求屏幕共享（全屏录制）
+    // 每次开始前清掉上一次的残留
+    discard()
+
     const stream = await (navigator.mediaDevices as any).getDisplayMedia({
       video: {
         frameRate: 30,
         width: { ideal: 1280 },
         height: { ideal: 720 },
       },
-      audio: true,          // 尝试录标签页/系统音频（Chrome 会弹窗询问）
+      audio: true,
     })
     displayStream = stream as MediaStream
 
-    // 2. 若用户没给标签页音频，则尝试加麦克风
     const hasAudio = displayStream.getAudioTracks().length > 0
     if (!hasAudio) {
       try {
@@ -66,7 +71,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
       }
     }
 
-    // 3. 创建 MediaRecorder
     chunks = []
     sizeMB.value = 0
     duration.value = 0
@@ -74,7 +78,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
     const mimeType = pickMimeType()
     const recorder = new MediaRecorder(displayStream, {
       mimeType: mimeType || undefined,
-      videoBitsPerSecond: 2_500_000,   // 2.5 Mbps，约 18 MB/分钟
+      videoBitsPerSecond: 2_500_000,
     })
     mediaRecorder = recorder
 
@@ -102,7 +106,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
       }
     }, 1000)
 
-    // 用户在浏览器原生条上点"停止共享"时同步停止
     displayStream.getVideoTracks()[0].addEventListener('ended', () => {
       if (isRecording.value) void stop()
     })
@@ -112,7 +115,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
     return new Promise((resolve) => {
       const recorder = mediaRecorder
       if (!recorder || recorder.state === 'inactive') {
-        cleanup()
+        cleanupStreams()
         resolve(null)
         return
       }
@@ -120,19 +123,48 @@ export function useRecording(options: UseRecordingOptions = {}) {
         const blob = new Blob(chunks, {
           type: recorder.mimeType || 'video/webm',
         })
-        cleanup()
+        cleanupStreams()
+        // ★ 保留 blob 供预览与上传
+        setPending(blob)
         resolve(blob)
       }
       try {
         recorder.stop()
       } catch {
-        cleanup()
+        cleanupStreams()
         resolve(null)
       }
     })
   }
 
-  function cleanup() {
+  function setPending(blob: Blob) {
+    // 清掉上一个
+    if (pendingUrl.value) URL.revokeObjectURL(pendingUrl.value)
+    pendingBlob.value = blob
+    pendingUrl.value = URL.createObjectURL(blob)
+  }
+
+  /** 丢弃当前待处理的录制（关弹窗、重新录制时调用） */
+  function discard() {
+    if (pendingUrl.value) {
+      URL.revokeObjectURL(pendingUrl.value)
+      pendingUrl.value = ''
+    }
+    pendingBlob.value = null
+  }
+
+  /** 取用 blob 后自动清空（上传成功后调用） */
+  function takeBlob(): Blob | null {
+    const b = pendingBlob.value
+    pendingBlob.value = null
+    if (pendingUrl.value) {
+      URL.revokeObjectURL(pendingUrl.value)
+      pendingUrl.value = ''
+    }
+    return b
+  }
+
+  function cleanupStreams() {
     if (displayStream) {
       displayStream.getTracks().forEach((t) => t.stop())
       displayStream = null
@@ -151,6 +183,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
 
   onBeforeUnmount(() => {
     if (isRecording.value) void stop()
+    discard()
   })
 
   return {
@@ -158,7 +191,11 @@ export function useRecording(options: UseRecordingOptions = {}) {
     duration,
     sizeMB,
     autoStoppedReason,
+    pendingBlob,
+    pendingUrl,
     start,
     stop,
+    discard,
+    takeBlob,
   }
 }

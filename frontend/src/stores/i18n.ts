@@ -501,6 +501,20 @@ export const BASE_TEXT: Record<string, string> = {
   activity_enter: 'Enter Activity',
   live_enter: 'Enter Live',
   no_lives: 'No live streams yet',
+  // ── 录制相关 ──
+  recording_start: 'Record',
+  recording_stop: 'Stop',
+  recording_uploading: 'Uploading recording…',
+  recording_uploaded: 'Recording uploaded and published',
+  recording_failed: 'Recording failed',
+  recording_unsupported: 'Recording not supported on this server',
+  recording_pick_screen: 'Pick a screen / window / tab to share',
+  // ── 录制预览 ──
+  recording_preview_title: 'Recording Preview',
+  recording_discard: 'Discard',
+  recording_publish: 'Publish',
+  recording_upload_failed: 'Upload failed',
+  recording_pending_warning: 'You have an unprocessed recording. Please Publish or Discard it first.',
 }
 
 export const LANGUAGES: Record<string, string> = {
