@@ -83,8 +83,9 @@ async def _run_migrations() -> None:
         "ALTER TABLE videos ALTER COLUMN views SET DEFAULT 0",
         "ALTER TABLE videos ALTER COLUMN likes SET DEFAULT 0",
         "ALTER TABLE videos ALTER COLUMN hearts SET DEFAULT 0",
-        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'live'",
-        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'activity'",
+        # ★ 大写标签（SQLAlchemy 使用枚举成员的 .name，即大写）
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'LIVE'",
+        "ALTER TYPE service_category ADD VALUE IF NOT EXISTS 'ACTIVITY'",
         "UPDATE videos SET views = 0 WHERE views IS NULL",
         "UPDATE videos SET likes = 0 WHERE likes IS NULL",
         "UPDATE videos SET hearts = 0 WHERE hearts IS NULL",

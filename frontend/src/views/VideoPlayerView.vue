@@ -9,10 +9,8 @@ const router = useRouter()
 const auth = useAuthStore()
 const i18n = useI18nStore()
 
-// ★ FeedTab 加 'live'
 type FeedTab = 'following' | 'friends' | 'recommend' | 'live' | 'activity'
 
-// ★ 5 个 tab：following / friends / recommend / live / activity
 const FEED_TABS = computed<{ key: FeedTab; label: string; icon: string }[]>(() => [
   { key: 'following', label: i18n.t('video_tab_following'), icon: '👀' },
   { key: 'friends',   label: i18n.t('video_tab_friends'),   icon: '👥' },
@@ -61,9 +59,6 @@ const currentVideo = computed<VideoItem | null>(
 
 const videoEl = ref<HTMLVideoElement | null>(null)
 
-// ══════════════════════════════════════════════════════════════
-// 视频源解析
-// ══════════════════════════════════════════════════════════════
 type VideoSource =
   | { type: 'embed'; platform: string; embedUrl: string; originalUrl: string }
   | { type: 'direct'; url: string }
@@ -165,8 +160,6 @@ function openExternal() {
     window.open(src.originalUrl, '_blank', 'noopener,noreferrer')
   }
 }
-
-// ══════════════════════════════════════════════════════════════
 
 const progressPct = computed(() => {
   if (!duration.value) return 0
@@ -325,8 +318,6 @@ function goSearch() { router.push('/search') }
 function goSettings() { router.push('/settings') }
 function goArticles() { router.push('/articles') }
 
-// ★ 已移除 goLive()（Live 现在是 tab 而不是跳转）
-
 async function onAvatarClick() {
   if (!currentVideo.value) return
   router.push(`/profile/${currentVideo.value.owner_string_id}`)
@@ -396,21 +387,15 @@ onBeforeUnmount(() => {
   <div class="video-page">
     <header class="top-bar">
       <div class="tab-group">
-        <!-- ★ 5 个 tab 直接循环：following / friends / recommend / live / activity -->
+        <!-- ★ 5 个 tab 视觉统一：颜色、字体、图标、高亮完全一致 -->
         <button
           v-for="t in FEED_TABS"
           :key="t.key"
           class="tab-btn"
-          :class="{
-            active: activeTab === t.key,
-            'live-btn': t.key === 'live',
-            'activity-btn': t.key === 'activity',
-          }"
+          :class="{ active: activeTab === t.key }"
           @click="selectTab(t.key)"
         >
-          <span v-if="t.key === 'live'" class="live-dot" />
-          <span v-else-if="t.key === 'activity'" class="activity-dot" />
-          <span v-else class="tab-icon">{{ t.icon }}</span>
+          <span class="tab-icon">{{ t.icon }}</span>
           <span class="tab-label">{{ t.label }}</span>
         </button>
       </div>
@@ -504,7 +489,7 @@ onBeforeUnmount(() => {
         >▲</button>
         <button
           class="nav-arrow down"
-          :disabled="currentIndex >= videos.length - 1"
+          :disabled="currentIndex >= videos.value.length - 1"
           @click.stop="nextVideo"
           :title="i18n.t('video_tab_next') || 'Next'"
         >▼</button>
@@ -605,58 +590,29 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 .tab-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* ★ 5 个 tab 样式完全统一 */
 .tab-btn {
   background: transparent; border: none;
   color: rgba(255, 255, 255, 0.65);
   font-size: 0.95rem;
+  font-weight: 500;
   padding: 0.35rem 0.6rem;
   border-radius: 6px;
   cursor: pointer;
   display: flex; align-items: center; gap: 0.3rem;
+  transition: color 0.15s, background 0.15s;
 }
-.tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+.tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
 .tab-btn.active {
   color: var(--gold, #e5b80b);
   background: rgba(229, 184, 11, 0.12);
   font-weight: 600;
 }
 .tab-icon { font-size: 0.9rem; }
-
-/* ★ Live tab：红点脉冲 */
-.live-btn { color: #ff4d4d; }
-.live-btn.active {
-  color: #fff;
-  background: rgba(255, 77, 77, 0.25);
-}
-.live-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ff4d4d;
-  flex-shrink: 0;
-  animation: livePulse 1.2s infinite;
-}
-@keyframes livePulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* ★ Activity tab：金点脉冲 */
-.activity-btn { color: #e5b80b; }
-.activity-btn.active {
-  color: #111;
-  background: rgba(229, 184, 11, 0.7);
-}
-.activity-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #e5b80b;
-  flex-shrink: 0;
-  animation: livePulse 1.2s infinite;
-}
 
 .right-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .icon-btn {
@@ -672,8 +628,6 @@ onBeforeUnmount(() => {
 .icon-btn:hover { border-color: var(--gold, #e5b80b); }
 .article-btn { border-color: rgba(229, 184, 11, 0.5); }
 .article-btn:hover { border-color: var(--gold, #e5b80b); background: rgba(229, 184, 11, 0.12); }
-
-/* 其余样式与你原来的完全一致（略），保持不变即可 */
 
 .player-wrap {
   flex: 1 1 auto;
