@@ -160,7 +160,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="activity-page" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- 顶部栏：全屏时隐藏 -->
     <div v-show="!isFullscreen" class="activity-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -207,7 +206,6 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <!-- 操作栏：全屏时保留 -->
         <div class="action-bar">
           <button type="button" class="action-btn">
             🎁<span class="label">{{ i18n.t('live_btn_gift') }}</span>
@@ -267,15 +265,9 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <!-- ★★★ 右侧列：三个模块 -->
       <aside class="right-col">
-        <!-- 活动数据统计：占剩余空间的 75% -->
         <ActivityStatsPanel :room-id="roomId" class="activity-stats" />
-
-        <!-- 个人数据统计：占剩余空间的 25% -->
         <PersonalStatsPanel :room-id="roomId" class="personal-stats" />
-
-        <!-- 个人数据上传按钮：占据自己的自然高度 -->
         <button
           type="button"
           class="personal-upload-btn"
@@ -286,7 +278,6 @@ onBeforeUnmount(() => {
       </aside>
     </main>
 
-    <!-- 邀请好友弹窗 -->
     <div v-if="showInvite" class="modal-backdrop" @click.self="showInvite = false">
       <div class="modal">
         <div class="modal-header">
@@ -323,7 +314,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 个人数据上传弹窗 -->
     <PersonalDataUploadDialog
       v-model:visible="showUploadDialog"
       :room-id="roomId"
@@ -333,10 +323,16 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ★★★ 关键修改：脱离文档流，覆盖整个视口，避开系统 Logo 头部 */
 .activity-page {
-  display: flex; flex-direction: column;
-  width: 100vw; height: 100vh; height: 100dvh;
-  background: #000; color: #fff; overflow: hidden;
+  position: fixed;              /* ★ 覆盖整个视口 */
+  inset: 0;                     /* ★ 上下左右都贴 0 */
+  z-index: 9999;                /* ★ 盖在 Logo 头部之上 */
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -439,11 +435,6 @@ onBeforeUnmount(() => {
   opacity: 0.35; cursor: not-allowed;
 }
 
-/* ★★★ 右侧列：3fr 1fr auto
-   - activity-stats  : 剩余空间 75%
-   - personal-stats  : 剩余空间 25%
-   - upload-button   : 自然高度
-*/
 .right-col {
   display: grid;
   grid-template-rows: 3fr 1fr auto;
@@ -480,7 +471,6 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
 }
 
-/* 邀请弹窗 */
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.7);
