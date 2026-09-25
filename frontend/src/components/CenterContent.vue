@@ -64,16 +64,15 @@ const TABS: { key: Tab; labelKey: string }[] = [
   { key: 'contact', labelKey: 'contact_us' },
 ]
 
+// ★ 三个按钮都跳到视频页，通过 query.tab 区分内容
 function openVideoPlayer() {
-  router.push('/videos')
+  router.push({ path: '/videos', query: { tab: 'recommend' } })
 }
-
 function openLiveHall() {
-  router.push('/live')
+  router.push({ path: '/videos', query: { tab: 'live' } })
 }
-
 function openActivityLive() {
-  router.push('/activity')
+  router.push({ path: '/videos', query: { tab: 'activity' } })
 }
 </script>
 
@@ -89,16 +88,16 @@ function openActivityLive() {
       >
         {{ i18n.t(t.labelKey) }}
       </button>
+
+      <!-- ★ 三个按钮统一为 play-btn 样式 -->
       <button class="tab-btn play-btn" @click="openVideoPlayer">
         ▶ {{ i18n.t('play_video') }}
       </button>
-      <!-- ★ 直播按钮：纯 i18n -->
-      <button class="tab-btn live-btn" @click="openLiveHall">
-        <span class="live-dot" /> {{ i18n.t('live') }}
+      <button class="tab-btn play-btn" @click="openLiveHall">
+        📺 {{ i18n.t('live') }}
       </button>
-      <!-- ★ Activity 按钮：纯 i18n -->
-      <button class="tab-btn activity-btn" @click="openActivityLive">
-        <span class="activity-dot" /> {{ i18n.t('activity') }}
+      <button class="tab-btn play-btn" @click="openActivityLive">
+        🎉 {{ i18n.t('activity') }}
       </button>
     </nav>
 
@@ -215,68 +214,17 @@ function openActivityLive() {
   border-color: var(--gold);
   font-weight: 600;
 }
+
+/* ★ 三个按钮统一：字体、边框、hover、active 完全一致 */
 .play-btn {
   color: var(--gold);
   border-color: var(--gold);
+  font-weight: 600;
 }
 .play-btn:hover {
   background: var(--gold);
   color: #111;
 }
-
-.live-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  color: #ff4d4d;
-  border-color: #ff4d4d;
-  font-weight: 600;
-}
-.live-btn:hover {
-  background: linear-gradient(90deg, #8b5cf6, #ff4d4d);
-  border-color: #ff4d4d;
-  color: #fff;
-}
-.live-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ff4d4d;
-  flex-shrink: 0;
-  animation: livePulse 1.2s infinite;
-}
-.live-btn:hover .live-dot { background: #fff; }
-@keyframes livePulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(0.8); }
-}
-
-.activity-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  color: #e5b80b;
-  border-color: #e5b80b;
-  font-weight: 600;
-}
-.activity-btn:hover {
-  background: linear-gradient(90deg, #e5b80b, #ff9500);
-  border-color: #ff9500;
-  color: #111;
-}
-.activity-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #e5b80b;
-  flex-shrink: 0;
-  animation: livePulse 1.2s infinite;
-}
-.activity-btn:hover .activity-dot { background: #111; }
 
 .tab-content {
   padding: 1.25rem 1.5rem 2rem;
@@ -364,7 +312,5 @@ function openActivityLive() {
 @media (max-width: 700px) {
   .service-grid { grid-template-columns: 1fr; }
   .tab-btn { font-size: 0.7rem; padding: 0.45rem 0.15rem; }
-  .live-dot { width: 6px; height: 6px; }
-  .activity-dot { width: 6px; height: 6px; }
 }
 </style>

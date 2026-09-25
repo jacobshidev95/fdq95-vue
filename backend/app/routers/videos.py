@@ -12,6 +12,8 @@ from app.database import async_session_maker, get_async_session
 from app.models import ActivityVideo, Follow, Friend, ServiceCategory, User, Video
 from app.schemas import ActivityVideoRead, VideoCreate, VideoCreateResponse, VideoRead
 from app.services.whisper_service import transcribe_video
+from typing import Optional
+from app.auth import current_active_user, current_user
 
 router = APIRouter()
 
@@ -30,22 +32,25 @@ async def _user_by_string(session: AsyncSession, sid: str) -> User:
 async def feed(
     tab: str = "recommend",
     limit: int = 20,
-    me: User = Depends(current_active_user),
+    me: Optional[User] = Depends(current_user),   # ★ 改为可选用户
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
     limit = max(1, min(limit, 50))
 
-    following_ids = set(
-        (await session.execute(
-            select(Follow.following_id).where(Follow.follower_id == me.id)
-        )).scalars().all()
-    )
-    friend_ids = set(
-        (await session.execute(
-            select(Friend.friend_id).where(Friend.user_id == me.id)
-        )).scalars().all()
-    )
-
+    # ★ me 可能为 None（游客）
+    following_ids: set = set()
+    friend_ids: set = set()
+    if me is not None:
+        following_ids = set(
+            (await session.execute(
+                select(Follow.following_id).where(Follow.follower_id == me.id)
+            )).scalars().all()
+        )
+        friend_ids = set(
+            (await session.execute(
+                select(Friend.friend_id).where(Friend.user_id == me.id)
+            )).scalars().all()
+        )
 
     stmt = select(Video)
     if tab == "following":
@@ -57,17 +62,14 @@ async def feed(
             return {"videos": []}
         stmt = stmt.where(Video.user_id.in_(friend_ids))
     elif tab == "live":
-        # ★ 只显示录制的 Live 视频
         stmt = stmt.where(Video.category == ServiceCategory.LIVE)
     elif tab == "activity":
-        # ★ 只显示录制的 Activity 视频
         stmt = stmt.where(Video.category == ServiceCategory.ACTIVITY)
     elif tab == "recommend":
-        # 推荐：排除 live / activity（只显示普通视频）
         stmt = stmt.where(
             Video.category.notin_([ServiceCategory.LIVE, ServiceCategory.ACTIVITY])
         )
-    # 其它未知 tab：不过滤，返回全部
+    # 其它未知 tab：不过滤
 
     stmt = stmt.order_by(desc(Video.created_at)).limit(limit)
     videos = (await session.execute(stmt)).scalars().all()
@@ -100,11 +102,10 @@ async def feed(
             "comment_count": 0,
             "is_liked": False,
             "is_loved": False,
-            "is_following_owner": v.user_id in following_ids,
+            "is_following_owner": (me is not None) and (v.user_id in following_ids),
             "created_at": v.created_at.isoformat() if v.created_at else None,
         })
     return {"videos": result}
-
 
 # ══════════════════════════════════════════════════════════════
 # 视频上传 + 转码

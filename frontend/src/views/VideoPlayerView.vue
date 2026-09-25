@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useI18nStore } from '@/stores/i18n'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const i18n = useI18nStore()
 
@@ -19,7 +21,14 @@ const FEED_TABS = computed<{ key: FeedTab; label: string; icon: string }[]>(() =
   { key: 'activity',  label: i18n.t('activity'),            icon: '🎉' },
 ])
 
-const activeTab = ref<FeedTab>('recommend')
+const VALID_TABS: FeedTab[] = ['following', 'friends', 'recommend', 'live', 'activity']
+
+function parseTab(v: unknown): FeedTab {
+  const s = String(v || '')
+  return (VALID_TABS as string[]).includes(s) ? (s as FeedTab) : 'recommend'
+}
+
+const activeTab = ref<FeedTab>(parseTab(route.query.tab))
 
 interface VideoItem {
   id: string
@@ -371,6 +380,17 @@ function onComment() {
   if (!v) return
   router.push(`/videos/${v.id}/comments`)
 }
+
+watch(
+  () => route.query.tab,
+  (v) => {
+    const next = parseTab(v)
+    if (next !== activeTab.value) {
+      activeTab.value = next
+      loadFeed()
+    }
+  },
+)
 
 onMounted(() => {
   loadFeed()
