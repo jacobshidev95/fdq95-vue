@@ -495,6 +495,12 @@ export const BASE_TEXT: Record<string, string> = {
   personal_data_upload_btn: 'Upload My Data',
   personal_data_upload_title: 'Upload Personal Data',
   personal_data_upload_placeholder: 'Personal data upload form — to be designed',
+  // ── 客户活动模板（追加）──
+  no_activities: 'No activities yet',
+  activity_create: 'Launch Activity',
+  activity_enter: 'Enter Activity',
+  live_enter: 'Enter Live',
+  no_lives: 'No live streams yet',
 }
 
 export const LANGUAGES: Record<string, string> = {

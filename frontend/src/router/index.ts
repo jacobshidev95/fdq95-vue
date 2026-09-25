@@ -209,8 +209,7 @@ const router = createRouter({
     {
       path: '/settings/launch-activity',
       name: 'settings-launch-activity',
-      component: SettingsListPlaceholder,
-      meta: { title: '发起活动', apiPath: '' },
+      component: ActivityStartView,
     },
 
     // ── admin portal ──

@@ -16,12 +16,15 @@ const scrollRoot = ref<HTMLElement | null>(null)
 const cardRefs = ref<HTMLElement[]>([])
 let observer: IntersectionObserver | null = null
 
+// ★ 当前是否是活动大厅
+const isActivityHall = computed(() => route.path.startsWith('/activity'))
+
 // ★ 分类筛选：从 URL query 初始化
 const categoryFilter = ref<string | null>(
-  (route.query.category as string) || null,
+  (route.query.category as string) || (isActivityHall.value ? 'activity' : null),
 )
 
-// ★ 监听 URL query 变化（浏览器前进/后退、直接改地址栏）
+// ★ 监听 URL query 变化
 watch(
   () => route.query.category,
   (val) => {
@@ -38,10 +41,23 @@ watch(categoryFilter, (val) => {
   const current = (route.query.category as string) || null
   if (val !== current) {
     const query = val ? { category: val } : {}
-    router.replace({ path: '/live', query })
+    router.replace({ path: route.path, query })
   }
   applyFilter()
 })
+
+// ★ 路由从 /live 切到 /activity（或反之）时重置筛选
+watch(
+  () => route.path,
+  () => {
+    if (isActivityHall.value && categoryFilter.value !== 'activity') {
+      categoryFilter.value = 'activity'
+    } else if (!isActivityHall.value && categoryFilter.value === 'activity') {
+      categoryFilter.value = null
+    }
+    load()
+  },
+)
 
 function applyFilter() {
   if (!categoryFilter.value) {
@@ -62,8 +78,6 @@ function applyFilter() {
 async function load() {
   loading.value = true
   try {
-    // 一次性拉最近 100 条直播，再在前端按分类过滤
-    // （后端过滤可作为后续优化：GET /api/live/active?category=xxx）
     const data = await liveApi.listActive(100, 0)
     allSessions.value = data
     applyFilter()
@@ -80,11 +94,29 @@ function setCardRef(el: any, idx: number) {
 }
 
 function enterSession(s: LiveSession) {
-  router.push(`/live/${s.room_id}`)
+  if (isActivityHall.value) {
+    router.push(`/activity/${s.room_id}`)
+  } else {
+    router.push(`/live/${s.room_id}`)
+  }
 }
 
-function goLiveHall() {
-  router.push('/live')
+// ★★★ 根据当前路径分流：活动 → 创建活动；直播 → 创建直播
+function goCreate() {
+  if (isActivityHall.value) {
+    router.push('/settings/launch-activity')
+  } else {
+    router.push('/settings/go-live')
+  }
+}
+
+function goCategoryAll() {
+  if (isActivityHall.value) {
+    // 活动大厅无法看"全部"，因为活动本身就是 category=activity
+    // 这里保留切换逻辑，但活动视图下筛选器固定显示活动
+    return
+  }
+  categoryFilter.value = null
 }
 
 onMounted(async () => {
@@ -112,37 +144,46 @@ onBeforeUnmount(() => {
   <div class="hall-root" ref="scrollRoot">
     <div class="hall-top">
       <button class="back-btn" @click="router.back()">‹</button>
-      <span class="hall-title">{{ i18n.t('live') || '直播' }}</span>
-      <!-- ★ 分类筛选 COMBOX（含"全部"选项） -->
-      <div class="hall-filter">
+      <span class="hall-title">
+        {{ isActivityHall ? (i18n.t('activity') || 'Activity') : (i18n.t('live') || 'Live') }}
+      </span>
+      <!-- 直播大厅显示分类筛选；活动大厅固定筛选 -->
+      <div v-if="!isActivityHall" class="hall-filter">
         <CategorySelect
           v-model="categoryFilter"
           storage-key="fdq95_live_hall_filter"
-          :placeholder="i18n.t('all_categories') || '全部'"
+          :placeholder="i18n.t('all_categories') || 'All'"
           :include-all="true"
-          :all-label="i18n.t('all_categories') || '全部'"
+          :all-label="i18n.t('all_categories') || 'All'"
         />
       </div>
     </div>
 
-    <div v-if="loading" class="hall-empty">加载中…</div>
+    <div v-if="loading" class="hall-empty">
+      {{ i18n.t('video_loading') || 'Loading…' }}
+    </div>
 
     <div v-else-if="sessions.length === 0" class="hall-empty">
-      <p v-if="categoryFilter">
-        {{ i18n.t('no_lives_in_category') || '该分类下暂无正在直播的房间' }}
+      <p v-if="categoryFilter && !isActivityHall">
+        {{ i18n.t('no_lives_in_category') || 'No live streams in this category' }}
       </p>
-      <p v-else>暂无正在直播的房间</p>
+      <p v-else-if="isActivityHall">
+        {{ i18n.t('no_activities') || 'No activities yet' }}
+      </p>
+      <p v-else>
+        {{ i18n.t('no_lives') || 'No live streams yet' }}
+      </p>
 
       <div class="hall-empty-actions">
         <button
-          v-if="categoryFilter"
+          v-if="categoryFilter && !isActivityHall"
           class="go-btn ghost"
-          @click="categoryFilter = null"
+          @click="goCategoryAll"
         >
-          {{ i18n.t('show_all') || '查看全部' }}
+          {{ i18n.t('show_all') || 'Show all' }}
         </button>
-        <button class="go-btn" @click="router.push('/settings/go-live')">
-          去开播
+        <button class="go-btn" @click="goCreate">
+          {{ isActivityHall ? (i18n.t('activity_create') || 'Launch Activity') : (i18n.t('live_open') || 'Go Live') }}
         </button>
       </div>
     </div>
@@ -171,7 +212,7 @@ onBeforeUnmount(() => {
           <span class="hall-host-id">@{{ s.host_user_id }}</span>
         </div>
 
-        <div class="hall-card-title">{{ s.title || '未命名直播' }}</div>
+        <div class="hall-card-title">{{ s.title || '—' }}</div>
         <div v-if="s.category" class="hall-card-cat"># {{ s.category }}</div>
 
         <div class="hall-stats">
@@ -179,7 +220,9 @@ onBeforeUnmount(() => {
           <span>{{ new Date(s.started_at).toLocaleTimeString() }}</span>
         </div>
 
-        <button class="hall-enter">进入直播间</button>
+        <button class="hall-enter">
+          {{ isActivityHall ? (i18n.t('activity_enter') || 'Enter Activity') : (i18n.t('live_enter') || 'Enter Live') }}
+        </button>
       </div>
     </div>
   </div>
@@ -230,7 +273,6 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-/* ★ 顶部筛选栏 */
 .hall-filter {
   margin-left: auto;
   width: 140px;
