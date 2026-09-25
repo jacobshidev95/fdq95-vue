@@ -273,7 +273,8 @@ onBeforeUnmount(() => {
           class="personal-upload-btn"
           @click="showUploadDialog = true"
         >
-          ⬆️ {{ i18n.t('personal_data_upload_btn') }}
+          <span>⬆️</span>
+          <span class="label">{{ i18n.t('personal_data_upload_btn') }}</span>
         </button>
       </aside>
     </main>
@@ -452,19 +453,25 @@ onBeforeUnmount(() => {
 .personal-upload-btn {
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;          /* ★ 改成竖向排列 */
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.65rem 1rem;
+  gap: 0.1rem;                     /* 与 action-btn 一致 */
+  padding: 0.45rem 0.2rem;         /* ★ 与 action-btn 一致 */
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   border: none;
   border-radius: 10px;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1.1rem;               /* ★ 图标字号 */
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
   transition: all 0.15s;
+}
+.personal-upload-btn .label {
+  font-size: 0.68rem;              /* ★ 与 action-btn 的 label 一致 */
+  color: #fff;
+  font-weight: 500;
 }
 .personal-upload-btn:hover {
   background: linear-gradient(135deg, #7c3aed, #4f46e5);

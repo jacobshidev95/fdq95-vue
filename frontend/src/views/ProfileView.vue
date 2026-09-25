@@ -20,6 +20,9 @@ const menuOpen = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 
+// ★ 当前用户是否为管理员
+const isAdmin = computed(() => auth.user?.is_admin === true)
+
 const avatarHue = computed(() => {
   const id = store.viewing?.user_string_id || store.me?.user_string_id || ''
   let h = 0
@@ -34,7 +37,6 @@ const friendBtnState = computed<FriendBtnState>(() => {
   return 'idle'
 })
 
-// ★ 三个状态三种文案
 const friendBtnText = computed(() => {
   switch (friendBtnState.value) {
     case 'friend':  return i18n.t('friend_status_friend')
@@ -109,7 +111,6 @@ function goUserArticles() {
   if (id) router.push(`/user/${id}/articles`)
 }
 
-// ★ Live Replay：跳该用户的直播回放列表
 function goLiveReplay() {
   const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/live-replays`)
@@ -125,6 +126,11 @@ function goProducts() {
   if (id) router.push(`/user/${id}/products`)
 }
 
+// ★ 跳转到 Dashboard（管理员页面）
+function goDashboard() {
+  router.push('/admin/dashboard')
+}
+
 function goVideoPlay() {
   router.push('/videos')
 }
@@ -133,7 +139,6 @@ function goArticleBrowse() {
   router.push('/articles')
 }
 
-// ★ 关注 / 取关
 async function onToggleFollow() {
   if (!store.viewing?.user_string_id) return
   if (!auth.token) {
@@ -148,7 +153,6 @@ async function onToggleFollow() {
   }
 }
 
-// ★ 申请朋友
 async function addFriend() {
   if (friendBtnDisabled.value) {
     if (friendBtnState.value === 'pending') {
@@ -222,7 +226,6 @@ function complaint() {
     </div>
 
     <template v-else>
-      <!-- Header -->
       <div class="profile-header">
         <div class="avatar-block">
           <div
@@ -267,13 +270,11 @@ function complaint() {
         </div>
       </div>
 
-      <!-- bio -->
       <div class="bio">
         <p class="bio-line">{{ (isSelf ? store.me : store.viewing)?.bio_line_1 || '' }}</p>
         <p class="bio-line">{{ (isSelf ? store.me : store.viewing)?.bio_line_2 || '' }}</p>
       </div>
 
-      <!-- ★★★ 三个按钮：关注 / 私信 / 申请朋友，仅查看他人主页时显示 -->
       <div v-if="!isSelf" class="action-row">
         <button
           class="action-btn follow-btn"
@@ -282,11 +283,9 @@ function complaint() {
         >
           {{ store.following ? i18n.t('unfollow') : i18n.t('follow') }}
         </button>
-
         <button class="action-btn message-btn" @click="goMessages">
           {{ i18n.t('message') }}
         </button>
-
         <button
           class="action-btn"
           :class="{
@@ -301,7 +300,7 @@ function complaint() {
         </button>
       </div>
 
-      <!-- 导航网格：7 个按钮 → 4 + 3 两行，不换行 -->
+      <!-- ★ nav-grid：Friend List 后加 Dashboard 按钮（仅管理员可见） -->
       <nav class="nav-grid">
         <button class="nav-tile" @click="router.push('/profile')">
           🏠 {{ i18n.t('personal_home') }}
@@ -324,12 +323,21 @@ function complaint() {
         <button class="nav-tile" @click="goFriendList">
           👥 {{ i18n.t('friend_list') }}
         </button>
+        <!-- ★ 新增：Dashboard（仅管理员可见） -->
+        <button
+          v-if="isAdmin"
+          class="nav-tile dashboard-tile"
+          @click="goDashboard"
+        >
+          🛡️ {{ i18n.t('admin_portal') }}
+        </button>
       </nav>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* 保持你原来的样式不变 */
 .profile-page {
   width: 100%;
   max-width: 640px;
@@ -439,7 +447,6 @@ function complaint() {
   word-break: break-word;
 }
 
-/* ★★★ 三个按钮：关注 / 私信 / 申请朋友 */
 .action-row {
   display: flex;
   gap: 0.5rem;
@@ -478,7 +485,6 @@ function complaint() {
   color: #aaa; opacity: 0.7;
 }
 
-/* ★ 导航网格：7 个按钮 → 4 列两行，不换行 */
 .nav-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -500,6 +506,17 @@ function complaint() {
   text-overflow: ellipsis;
 }
 .nav-tile:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ★ Dashboard 按钮：金色描边，突出管理员身份 */
+.dashboard-tile {
+  border-color: rgba(229, 184, 11, 0.6);
+  color: #e5b80b;
+  font-weight: 600;
+}
+.dashboard-tile:hover {
+  background: rgba(229, 184, 11, 0.12);
+  border-color: #e5b80b;
+}
 
 @media (max-width: 720px) {
   .nav-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -9,13 +9,16 @@ const router = useRouter()
 const auth = useAuthStore()
 const i18n = useI18nStore()
 
-type FeedTab = 'following' | 'friends' | 'recommend' | 'activity'
+// ★ FeedTab 加 'live'
+type FeedTab = 'following' | 'friends' | 'recommend' | 'live' | 'activity'
 
+// ★ 5 个 tab：following / friends / recommend / live / activity
 const FEED_TABS = computed<{ key: FeedTab; label: string; icon: string }[]>(() => [
   { key: 'following', label: i18n.t('video_tab_following'), icon: '👀' },
   { key: 'friends',   label: i18n.t('video_tab_friends'),   icon: '👥' },
   { key: 'recommend', label: i18n.t('video_tab_recommend'), icon: '✨' },
-  { key: 'activity',  label: i18n.t('video_tab_activity'),  icon: '🎉' },
+  { key: 'live',      label: i18n.t('live'),                icon: '📺' },
+  { key: 'activity',  label: i18n.t('activity'),            icon: '🎉' },
 ])
 
 const activeTab = ref<FeedTab>('recommend')
@@ -280,7 +283,6 @@ function selectTab(tab: FeedTab) {
   loadFeed()
 }
 
-// ★ 滚轮：任何位置（含 iframe 之上）—— 依靠 video-stage 的 capture 层
 function onWheel(e: WheelEvent) {
   if (e.deltaY > 0) nextVideo()
   else if (e.deltaY < 0) prevVideo()
@@ -323,8 +325,7 @@ function goSearch() { router.push('/search') }
 function goSettings() { router.push('/settings') }
 function goArticles() { router.push('/articles') }
 
-// ★ 新增：点击 Live 按钮跳转到直播大厅
-function goLive() { router.push('/live') }
+// ★ 已移除 goLive()（Live 现在是 tab 而不是跳转）
 
 async function onAvatarClick() {
   if (!currentVideo.value) return
@@ -395,26 +396,23 @@ onBeforeUnmount(() => {
   <div class="video-page">
     <header class="top-bar">
       <div class="tab-group">
-        <!-- ★ 在 recommend 和 activity 之间插入 Live 按钮 -->
-        <template v-for="t in FEED_TABS" :key="t.key">
-          <button
-            class="tab-btn"
-            :class="{ active: activeTab === t.key }"
-            @click="selectTab(t.key)"
-          >
-            <span class="tab-icon">{{ t.icon }}</span>
-            <span class="tab-label">{{ t.label }}</span>
-          </button>
-          <button
-            v-if="t.key === 'recommend'"
-            class="tab-btn live-btn"
-            @click="goLive"
-            :title="i18n.t('live') || '直播'"
-          >
-            <span class="live-dot" />
-            <span class="tab-label">{{ i18n.t('live') || 'Live' }}</span>
-          </button>
-        </template>
+        <!-- ★ 5 个 tab 直接循环：following / friends / recommend / live / activity -->
+        <button
+          v-for="t in FEED_TABS"
+          :key="t.key"
+          class="tab-btn"
+          :class="{
+            active: activeTab === t.key,
+            'live-btn': t.key === 'live',
+            'activity-btn': t.key === 'activity',
+          }"
+          @click="selectTab(t.key)"
+        >
+          <span v-if="t.key === 'live'" class="live-dot" />
+          <span v-else-if="t.key === 'activity'" class="activity-dot" />
+          <span v-else class="tab-icon">{{ t.icon }}</span>
+          <span class="tab-label">{{ t.label }}</span>
+        </button>
       </div>
       <div class="right-actions">
         <button class="icon-btn" :title="i18n.t('tab_search')" @click="goSearch">🔍</button>
@@ -425,7 +423,6 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <!-- ★★★ 播放区：外层捕获事件 -->
     <main
       class="player-wrap"
       @wheel.prevent="onWheel"
@@ -460,7 +457,6 @@ onBeforeUnmount(() => {
           @loadedmetadata="onLoadedMetadata"
         />
 
-        <!-- 嵌入视频 -->
         <div v-else-if="isEmbedVideo" class="embed-wrap">
           <iframe
             class="embed-video"
@@ -485,7 +481,6 @@ onBeforeUnmount(() => {
           <span class="pause-icon">▶</span>
         </div>
 
-        <!-- 左下角：视频标题 + 作者 -->
         <div class="video-overlay-bottom">
           <p v-if="currentVideo.caption" class="overlay-caption">
             {{ currentVideo.caption }}
@@ -497,12 +492,10 @@ onBeforeUnmount(() => {
           </p>
         </div>
 
-        <!-- 底部居中：ASR 字幕（仅直接视频） -->
         <div v-if="isDirectVideo && currentSubtitle" class="subtitle-overlay">
           <span class="subtitle-text">{{ currentSubtitle }}</span>
         </div>
 
-        <!-- ★★★ 上一条/下一条按钮（左中/右中，垂挂） -->
         <button
           class="nav-arrow up"
           :disabled="currentIndex <= 0"
@@ -516,14 +509,11 @@ onBeforeUnmount(() => {
           :title="i18n.t('video_tab_next') || 'Next'"
         >▼</button>
 
-        <!-- 计数 -->
         <div class="video-counter">
           {{ currentIndex + 1 }} / {{ videos.length }}
         </div>
       </div>
 
-      <!-- ★★★ 上/下"滑动热区"：覆盖在视频上下边缘，捕获滚轮和触摸 -->
-      <!-- 只在嵌入视频（iframe）时显示，因为 iframe 会吞事件 -->
       <template v-if="isEmbedVideo && currentVideo">
         <div class="swipe-zone top" title="向上滚动切换上一条">
           <span class="swipe-hint">↕ 滑动切换 · 上一条</span>
@@ -534,7 +524,6 @@ onBeforeUnmount(() => {
       </template>
     </main>
 
-    <!-- 进度条（仅直接视频） -->
     <div v-if="currentVideo && isDirectVideo" class="progress-row">
       <span class="time-text">{{ formatTime(currentTime) }}</span>
       <div class="progress-track" @click="onSeek">
@@ -545,7 +534,6 @@ onBeforeUnmount(() => {
       <span class="time-text remaining">-{{ formatTime(remainingTime) }}</span>
     </div>
 
-    <!-- 底部操作栏 -->
     <footer v-if="currentVideo" class="bottom-bar">
       <button class="avatar-btn" @click="onAvatarClick">
         <img
@@ -634,17 +622,11 @@ onBeforeUnmount(() => {
 }
 .tab-icon { font-size: 0.9rem; }
 
-/* ★ 新增：Live 按钮（红点脉冲，hover 变渐变背景） */
-.live-btn {
-  color: #ff4d4d;
-  background: rgba(255, 77, 77, 0.08);
-  border: 1px solid rgba(255, 77, 77, 0.35);
-  font-weight: 600;
-}
-.live-btn:hover {
+/* ★ Live tab：红点脉冲 */
+.live-btn { color: #ff4d4d; }
+.live-btn.active {
   color: #fff;
-  background: linear-gradient(90deg, #8b5cf6, #ff4d4d);
-  border-color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.25);
 }
 .live-dot {
   display: inline-block;
@@ -655,10 +637,25 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   animation: livePulse 1.2s infinite;
 }
-.live-btn:hover .live-dot { background: #fff; }
 @keyframes livePulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ★ Activity tab：金点脉冲 */
+.activity-btn { color: #e5b80b; }
+.activity-btn.active {
+  color: #111;
+  background: rgba(229, 184, 11, 0.7);
+}
+.activity-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e5b80b;
+  flex-shrink: 0;
+  animation: livePulse 1.2s infinite;
 }
 
 .right-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
@@ -676,7 +673,8 @@ onBeforeUnmount(() => {
 .article-btn { border-color: rgba(229, 184, 11, 0.5); }
 .article-btn:hover { border-color: var(--gold, #e5b80b); background: rgba(229, 184, 11, 0.12); }
 
-/* 播放区 */
+/* 其余样式与你原来的完全一致（略），保持不变即可 */
+
 .player-wrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -685,357 +683,150 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  touch-action: pan-x;    /* 让上下滑动归 JS 处理 */
+  touch-action: pan-x;
 }
-
-.state-layer {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 2rem;
-}
+.state-layer { text-align: center; color: rgba(255, 255, 255, 0.7); padding: 2rem; }
 .state-layer.error { color: #ff8a80; }
 .state-layer .hint { font-size: 0.85rem; color: rgba(255, 255, 255, 0.4); margin-top: 0.5rem; }
 .state-layer button { margin-top: 1rem; }
 
 .video-stage {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
-.video-el {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  background: #000;
-}
+.video-el { max-width: 100%; max-height: 100%; object-fit: contain; background: #000; }
 
-/* 嵌入视频容器：使用 aspect-ratio 保持比例 */
 .embed-wrap {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  cursor: default;
+  position: relative; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: #000; cursor: default;
 }
 .embed-video {
-  height: 100%;
-  width: auto;
+  height: 100%; width: auto;
   aspect-ratio: 16 / 9;
-  max-width: 100%;
-  max-height: 100%;
-  border: none;
-  background: #000;
-  display: block;
+  max-width: 100%; max-height: 100%;
+  border: none; background: #000; display: block;
 }
 
-/* ★★★ 上下滑动热区：只在嵌入视频时显示 */
 .swipe-zone {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 36px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.55),
-    rgba(0, 0, 0, 0)
-  );
-  pointer-events: auto;
-  user-select: none;
-  cursor: ns-resize;
+  position: absolute; left: 0; right: 0; height: 36px; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0));
+  pointer-events: auto; user-select: none; cursor: ns-resize;
 }
-.swipe-zone.top {
-  top: 0;
-}
+.swipe-zone.top { top: 0; }
 .swipe-zone.bottom {
   bottom: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.55),
-    rgba(0, 0, 0, 0)
-  );
+  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0));
 }
-.swipe-hint {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-}
+.swipe-hint { color: rgba(255,255,255,0.6); font-size: 0.7rem; letter-spacing: 0.05em; }
 
-/* 外链卡片 */
 .external-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 2rem 1.5rem;
-  max-width: 420px;
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  text-align: center;
-  cursor: default;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.75rem; padding: 2rem 1.5rem; max-width: 420px;
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; text-align: center; cursor: default;
 }
-.external-platform {
-  font-size: 0.8rem;
-  color: var(--gold, #e5b80b);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
+.external-platform { font-size: 0.8rem; color: var(--gold, #e5b80b); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 .external-icon { font-size: 3rem; opacity: 0.8; }
-.external-hint {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.65);
-  margin: 0;
-  line-height: 1.5;
-}
-.external-btn {
-  background: #8b5cf6;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.65rem 1.5rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  margin-top: 0.25rem;
-}
+.external-hint { font-size: 0.85rem; color: rgba(255,255,255,0.65); margin: 0; line-height: 1.5; }
+.external-btn { background: #8b5cf6; color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 0.25rem; }
 .external-btn:hover { background: #7c3aed; }
-.external-url {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.35);
-  font-family: ui-monospace, monospace;
-  word-break: break-all;
-  max-width: 100%;
-  margin: 0;
-}
+.external-url { font-size: 0.7rem; color: rgba(255,255,255,0.35); font-family: ui-monospace, monospace; word-break: break-all; max-width: 100%; margin: 0; }
 
 .pause-overlay {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-  pointer-events: none;
+  background: rgba(0,0,0,0.35); pointer-events: none;
 }
-.pause-icon {
-  font-size: 4rem;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-}
+.pause-icon { font-size: 4rem; color: rgba(255,255,255,0.85); text-shadow: 0 2px 12px rgba(0,0,0,0.6); }
 
 .video-overlay-bottom {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
+  position: absolute; left: 0; right: 0; bottom: 0;
   padding: 1.25rem 3.5rem 0.6rem 1rem;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.85) 0%,
-    rgba(0, 0, 0, 0.4) 55%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  pointer-events: none;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 55%, rgba(0,0,0,0) 100%);
+  pointer-events: none; text-shadow: 0 1px 4px rgba(0,0,0,0.9);
 }
-.overlay-caption {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: #fff;
-  margin: 0 0 0.15rem;
-  line-height: 1.3;
-  word-break: break-word;
-}
-.overlay-owner {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  display: flex; gap: 0.3rem; flex-wrap: wrap;
-}
+.overlay-caption { font-size: 0.92rem; font-weight: 600; color: #fff; margin: 0 0 0.15rem; line-height: 1.3; word-break: break-word; }
+.overlay-owner { font-size: 0.75rem; color: rgba(255,255,255,0.85); margin: 0; display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .owner-at { color: var(--gold, #e5b80b); font-weight: 600; }
-.owner-sep { color: rgba(255, 255, 255, 0.4); }
-.owner-name { color: rgba(255, 255, 255, 0.85); }
+.owner-sep { color: rgba(255,255,255,0.4); }
+.owner-name { color: rgba(255,255,255,0.85); }
 
 .subtitle-overlay {
-  position: absolute;
-  left: 50%;
-  bottom: 3.5rem;
-  transform: translateX(-50%);
-  max-width: 90%;
-  background: rgba(0, 0, 0, 0.75);
-  border-radius: 6px;
-  padding: 0.35rem 0.8rem;
-  pointer-events: none;
-  text-align: center;
+  position: absolute; left: 50%; bottom: 3.5rem; transform: translateX(-50%);
+  max-width: 90%; background: rgba(0,0,0,0.75);
+  border-radius: 6px; padding: 0.35rem 0.8rem;
+  pointer-events: none; text-align: center;
 }
-.subtitle-text {
-  color: #fff;
-  font-size: 0.95rem;
-  line-height: 1.35;
-  font-weight: 500;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  word-break: break-word;
-}
+.subtitle-text { color: #fff; font-size: 0.95rem; line-height: 1.35; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,0.9); word-break: break-word; }
 
-/* 上/下切换按钮 */
 .nav-arrow {
-  position: absolute;
-  right: 0.75rem;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  font-size: 1rem;
-  cursor: pointer;
-  z-index: 6;
+  position: absolute; right: 0.75rem;
+  background: rgba(0,0,0,0.55); color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  width: 40px; height: 40px; border-radius: 50%; font-size: 1rem; cursor: pointer; z-index: 6;
 }
 .nav-arrow.up { top: 0.75rem; }
 .nav-arrow.down { bottom: 0.75rem; }
-.nav-arrow:hover:not(:disabled) {
-  border-color: var(--gold, #e5b80b);
-  background: rgba(0, 0, 0, 0.8);
-}
+.nav-arrow:hover:not(:disabled) { border-color: var(--gold, #e5b80b); background: rgba(0,0,0,0.8); }
 .nav-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
 
 .video-counter {
-  position: absolute;
-  top: 0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  font-size: 0.72rem;
-  padding: 0.12rem 0.55rem;
-  border-radius: 10px;
-  pointer-events: none;
-  z-index: 5;
+  position: absolute; top: 0.6rem; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.5); color: #fff;
+  font-size: 0.72rem; padding: 0.12rem 0.55rem; border-radius: 10px;
+  pointer-events: none; z-index: 5;
 }
 
-/* 进度条 */
 .progress-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 1rem;
-  background: rgba(0, 0, 0, 0.9);
-  flex: 0 0 auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.4rem 1rem; background: rgba(0,0,0,0.9);
+  flex: 0 0 auto; border-top: 1px solid rgba(255,255,255,0.06);
 }
-.time-text {
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.78rem;
-  font-family: ui-monospace, monospace;
-  min-width: 42px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.time-text.remaining { color: rgba(255, 255, 255, 0.9); }
-.progress-track {
-  flex: 1 1 auto;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  position: relative;
-  cursor: pointer;
-  transition: height 0.15s;
-}
+.time-text { color: rgba(255,255,255,0.75); font-size: 0.78rem; font-family: ui-monospace, monospace; min-width: 42px; text-align: center; flex-shrink: 0; }
+.time-text.remaining { color: rgba(255,255,255,0.9); }
+.progress-track { flex: 1 1 auto; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; position: relative; cursor: pointer; transition: height 0.15s; }
 .progress-track:hover { height: 8px; }
-.progress-fill {
-  height: 100%;
-  background: var(--gold, #e5b80b);
-  border-radius: 3px;
-  position: relative;
-  transition: width 0.1s linear;
-}
-.progress-thumb {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px; height: 14px;
-  background: var(--gold, #e5b80b);
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
+.progress-fill { height: 100%; background: var(--gold, #e5b80b); border-radius: 3px; position: relative; transition: width 0.1s linear; }
+.progress-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: var(--gold, #e5b80b); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.6); pointer-events: none; opacity: 0; transition: opacity 0.15s; }
 .progress-track:hover .progress-thumb { opacity: 1; }
 
-/* 底部操作栏 */
 .bottom-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  background: rgba(0, 0, 0, 0.9);
-  flex: 0 0 auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; padding: 0.5rem 0.9rem;
+  background: rgba(0,0,0,0.9); flex: 0 0 auto;
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 .avatar-btn {
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  border: 2px solid var(--gold, #e5b80b);
-  background: #333;
-  overflow: hidden;
-  cursor: pointer;
-  flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 2px solid var(--gold, #e5b80b); background: #333;
+  overflow: hidden; cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 700; font-size: 0.72rem;
 }
 .avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
-.action-btn {
-  background: transparent; border: none; color: #fff;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 0.2rem;
-  padding: 0.3rem 0.45rem;
-  border-radius: 6px;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-.action-btn:hover { background: rgba(255, 255, 255, 0.08); }
-
-.follow-btn {
-  background: #2ecc71; color: #fff;
-  border: 1px solid #2ecc71;
-  padding: 0.3rem 0.7rem;
-  border-radius: 6px;
-  font-weight: 600; font-size: 0.82rem;
-}
+.action-btn { background: transparent; border: none; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 0.2rem; padding: 0.3rem 0.45rem; border-radius: 6px; font-size: 1rem; flex-shrink: 0; }
+.action-btn:hover { background: rgba(255,255,255,0.08); }
+.follow-btn { background: #2ecc71; color: #fff; border: 1px solid #2ecc71; padding: 0.3rem 0.7rem; border-radius: 6px; font-weight: 600; font-size: 0.82rem; }
 .follow-btn:hover { background: #27ae60; border-color: #27ae60; }
 .follow-btn.following { background: #666; border-color: #666; color: #ddd; }
-
 .icon-action { font-size: 1.1rem; }
 .icon-action.active { color: #e5b80b; }
 .icon-action.loved { color: #ff5e7e; }
-.count { font-size: 0.7rem; color: rgba(255, 255, 255, 0.75); margin-left: 0.1rem; }
-
+.count { font-size: 0.7rem; color: rgba(255,255,255,0.75); margin-left: 0.1rem; }
 .comment-btn {
-  flex: 0 0 auto;
-  max-width: 220px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.7);
-  padding: 0.4rem 0.85rem;
-  border-radius: 20px;
-  font-size: 0.83rem;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto; max-width: 220px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  padding: 0.4rem 0.85rem; border-radius: 20px;
+  font-size: 0.83rem; text-align: left; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.comment-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.comment-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
 @media (max-width: 720px) {
   .tab-btn { font-size: 0.85rem; padding: 0.3rem 0.5rem; }
@@ -1044,7 +835,6 @@ onBeforeUnmount(() => {
   .nav-arrow { width: 36px; height: 36px; }
   .swipe-zone { height: 32px; }
 }
-
 @media (max-width: 480px) {
   .tab-label { display: none; }
   .tab-btn { padding: 0.28rem 0.45rem; }
@@ -1053,27 +843,21 @@ onBeforeUnmount(() => {
   .top-bar::-webkit-scrollbar { display: none; }
   .icon-btn { width: 28px; height: 28px; font-size: 0.8rem; }
   .right-actions { gap: 0.2rem; flex-shrink: 0; }
-
   .video-overlay-bottom { padding: 0.7rem 2.4rem 0.4rem 0.5rem; }
   .overlay-caption { font-size: 0.78rem; }
   .overlay-owner { font-size: 0.66rem; }
-
   .subtitle-overlay { bottom: 3rem; padding: 0.25rem 0.55rem; max-width: 92%; }
   .subtitle-text { font-size: 0.82rem; }
-
   .nav-arrow { width: 34px; height: 34px; font-size: 0.85rem; }
   .nav-arrow.up { top: 0.5rem; }
   .nav-arrow.down { bottom: 0.5rem; }
   .video-counter { font-size: 0.66rem; padding: 0.1rem 0.45rem; top: 0.4rem; }
-
   .swipe-zone { height: 30px; }
   .swipe-hint { font-size: 0.62rem; }
-
   .progress-row { padding: 0.28rem 0.5rem; gap: 0.4rem; }
   .time-text { font-size: 0.68rem; min-width: 34px; }
   .progress-track { height: 5px; }
   .progress-thumb { width: 12px; height: 12px; }
-
   .bottom-bar { gap: 0.2rem; padding: 0.32rem 0.5rem; flex-wrap: nowrap; overflow-x: auto; }
   .bottom-bar::-webkit-scrollbar { display: none; }
   .avatar-btn { width: 32px; height: 32px; font-size: 0.65rem; }
@@ -1081,11 +865,9 @@ onBeforeUnmount(() => {
   .action-btn { padding: 0.25rem 0.35rem; font-size: 0.92rem; flex-shrink: 0; }
   .count { display: none; }
   .comment-btn { font-size: 0.7rem; padding: 0.32rem 0.6rem; max-width: 140px; flex-shrink: 0; }
-
   .external-card { padding: 1.5rem 1rem; }
   .external-icon { font-size: 2.5rem; }
 }
-
 @media (max-width: 360px) {
   .follow-btn { font-size: 0.65rem; padding: 0.22rem 0.42rem; }
   .icon-action { font-size: 0.8rem; }

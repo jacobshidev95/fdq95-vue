@@ -93,7 +93,6 @@ const scopeCountryReadonly = computed(
   () => isNationalAdmin.value && createForm.provider_level === 'level_2',
 )
 
-// ★ 新增：根据所选 provider_level 计算 customer_level（只读展示）
 const computedCustomerLevel = computed<number>(() => {
   switch (createForm.provider_level) {
     case 'level_0': return 9
@@ -298,6 +297,7 @@ async function submitChangeEmail() {
   }
 }
 
+// ★ 保留函数，模板中已移除按钮
 function logout() {
   auth.logout()
   router.push('/admin/login')
@@ -352,13 +352,12 @@ onMounted(async () => {
         ✉️ {{ i18n.t('change_email') }}
       </button>
 
-      <button class="btn btn-outline top-btn" @click="goUserPages">
+      <!-- ★ User Pages：背景改为纯深色 -->
+      <button class="btn top-btn bg-dark-btn" @click="goUserPages">
         👤 {{ i18n.t('back_to_user_pages') }}
       </button>
 
-      <button class="btn btn-outline top-btn" @click="logout">
-        {{ i18n.t('logout') }}
-      </button>
+      <!-- ★ 已移除 Logout 按钮 -->
     </div>
 
     <div class="filters">
@@ -373,7 +372,8 @@ onMounted(async () => {
         <option :value="true">{{ i18n.t('admin_only_frozen') }}</option>
         <option :value="false">{{ i18n.t('admin_only_active') }}</option>
       </select>
-      <button class="btn btn-outline" @click="page = 1; loadUsers()">
+      <!-- ★ Search：背景改为纯深色 -->
+      <button class="btn bg-dark-btn" @click="page = 1; loadUsers()">
         {{ i18n.t('search') }}
       </button>
       <button v-if="canCreate" class="btn btn-primary" @click="openCreate">
@@ -427,7 +427,6 @@ onMounted(async () => {
               </span>
               <span v-else>—</span>
             </td>
-            <!-- ★ 客户等级列 -->
             <td>
               <span class="level-badge customer-lv">
                 Lv.{{ u.customer_level ?? 0 }}
@@ -510,7 +509,6 @@ onMounted(async () => {
           </option>
         </select>
 
-        <!-- ★ 新增：客户等级（只读，根据 provider_level 自动计算） -->
         <label>{{ i18n.t('customer_level') }}</label>
         <input
           :value="computedCustomerLevel"
@@ -615,7 +613,6 @@ onMounted(async () => {
   background: rgba(120, 144, 156, 0.2);
   color: #b0bec5;
 }
-/* ★ 客户等级徽章 */
 .level-badge.customer-lv {
   background: rgba(46, 204, 113, 0.15);
   color: #4ade80;
@@ -671,6 +668,18 @@ onMounted(async () => {
 .top-btn {
   padding: 0.35rem 0.85rem;
   font-size: 0.82rem;
+}
+
+/* ★ User Pages / Search 按钮：纯深色背景 */
+.bg-dark-btn {
+  background: rgba(32, 32, 32, 1.0);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.bg-dark-btn:hover {
+  background: rgba(50, 50, 50, 1.0);
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .filters {
@@ -849,7 +858,6 @@ onMounted(async () => {
   font-size: 0.9rem;
 }
 
-/* ★ 只读输入框 */
 .readonly-input {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-dim);
