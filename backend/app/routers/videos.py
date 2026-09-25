@@ -46,6 +46,7 @@ async def feed(
         )).scalars().all()
     )
 
+
     stmt = select(Video)
     if tab == "following":
         if not following_ids:
