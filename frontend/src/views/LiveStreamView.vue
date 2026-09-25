@@ -484,6 +484,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   display: block;
+  align-items: flex-end;
   border: 0;
 }
 
