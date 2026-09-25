@@ -38,10 +38,9 @@ const fieldCameraUrl = computed(() =>
   isHost.value ? FIELD_CAMERA_BASE : `${FIELD_CAMERA_BASE}?readonly=1`
 )
 
-// ★★★ 全屏切换
+// ★ 全屏切换
 const isFullscreen = ref(false)
 
-// 只有标题和类别都设置好了才能进全屏
 const canGoFullscreen = computed(
   () => !!liveTitle.value.trim() && !!liveCategory.value,
 )
@@ -173,7 +172,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="live-page" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- ★ 顶部栏：全屏时保留标题栏本身，只隐藏标题 input 和分类 -->
+    <!-- ★ 顶部栏：全屏时保留标题栏本身 -->
     <div class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -266,7 +265,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <!-- 全屏时隐藏右列 -->
+      <!-- ★★★ 右侧列：全屏时隐藏；场地相机占更多高度 -->
       <aside v-show="!isFullscreen" class="right-col">
         <div class="field-camera-frame">
           <iframe
@@ -386,7 +385,7 @@ onBeforeUnmount(() => {
   color: #e5b80b; border: 1px solid #e5b80b;
 }
 
-/* ★★★ 全屏/还原按钮：标题栏右侧，紫色醒目 */
+/* ★ 全屏/还原按钮：标题栏右侧，紫色醒目 */
 .fullscreen-toggle {
   display: inline-flex;
   align-items: center;
@@ -431,7 +430,7 @@ onBeforeUnmount(() => {
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
 
-/* ★ 全屏时：单列 + 无 padding，视频占满 */
+/* ★ 全屏时：单列 + 无 padding */
 .live-page.is-fullscreen .live-body {
   grid-template-columns: 1fr;
   gap: 0;
@@ -486,19 +485,25 @@ onBeforeUnmount(() => {
   background: rgba(231, 76, 60, 0.1);
 }
 
+/* ★★★ 右侧列：场地相机占更多高度，聊天框保留最小空间 */
 .right-col {
   display: flex; flex-direction: column;
   gap: 0.5rem; min-height: 0;
+  overflow: hidden;
 }
+
+/* ★ 场地相机：去掉固定 16/9 限制，改为自适应 + 最小高度 */
 .field-camera-frame {
-  flex: 0 0 auto; aspect-ratio: 16 / 9;
+  flex: 1 1 auto;                 /* 从 0 0 auto 改成 1 1 auto，撑满可用空间 */
+  min-height: 260px;              /* 保底高度，保证相机 UI 完整显示 */
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
 }
 .field-camera-iframe { width: 100%; height: 100%; display: block; border: 0; }
 
+/* 聊天框：给场地相机让出空间后，聊天框保留最小 200px */
 .audience-panel {
-  flex: 1 1 auto; min-height: 0;
+  flex: 1 1 auto; min-height: 200px;
   display: flex; flex-direction: column;
   background: #111; border-radius: 10px;
   border: 1px solid #222; overflow: hidden;
