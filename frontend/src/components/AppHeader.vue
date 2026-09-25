@@ -17,8 +17,9 @@ const currentLang = computed({
 })
 
 const isJobsPage = computed(() => route.path === '/jobs')
+// ★ Careers → Recruitment
 const jobsButtonLabel = computed(() =>
-  isJobsPage.value ? i18n.t('home') : i18n.t('careers'),
+  isJobsPage.value ? i18n.t('home') : i18n.t('recruitment'),
 )
 
 function goLogin() {
@@ -47,28 +48,28 @@ function logout() {
     <div class="right">
       <button
         v-if="!auth.isAuthenticated"
-        class="btn btn-outline nav-btn"
+        class="btn nav-btn"
         @click="goLogin"
       >
         {{ i18n.t('login') }}
       </button>
       <template v-else>
         <span class="user">{{ auth.user?.user_id || auth.user?.email }}</span>
-        <button class="btn btn-outline nav-btn" @click="logout">Logout</button>
+        <button class="btn nav-btn" @click="logout">
+          {{ i18n.t('logout') || 'Logout' }}
+        </button>
       </template>
 
-      <button class="btn btn-outline nav-btn" @click="toggleJobsHome">
+      <button class="btn nav-btn" @click="toggleJobsHome">
         {{ jobsButtonLabel }}
       </button>
 
-      <!-- Language select: after nav-btn, same width as nav-btn -->
       <select v-model="currentLang" class="lang-select nav-btn">
         <option v-for="(label, code) in LANGUAGES" :key="code" :value="code">
           {{ label }}
         </option>
       </select>
 
-      <!-- Date: pure white with edge; width matches nav-btn -->
       <span class="date nav-btn">{{ today }}</span>
     </div>
   </header>
@@ -115,36 +116,52 @@ function logout() {
   flex-wrap: wrap;
 }
 
-/* Every control in the right cluster shares the same width */
+/* ★ 所有右侧控件：统一背景色 rgba(32,32,32,1.0) + 白字 + 不换行 */
 .nav-btn {
-  min-width: 100px;
-  width: 100px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-}
-
-/* Language dropdown — styled as a button of the same width */
-.lang-select.nav-btn {
-  padding: 0.35rem 0.5rem;
-  margin: 0;
-  background: #1e1e1e;
-  color: var(--text);
+  min-width: 130px;                 /* ★ 从 100px 加宽到 130px，容得下 Recruitment */
+  padding: 0.4rem 0.75rem;
+  background: rgba(32, 32, 32, 1.0); /* ★ 统一深色背景 */
+  color: #ffffff;                    /* ★ 白色文字 */
   border: 1px solid var(--gold);
   border-radius: 6px;
   font-weight: 600;
   font-size: 0.85rem;
+  text-align: center;
+  white-space: nowrap;               /* ★ 禁止换行 */
   cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.nav-btn:hover {
+  background: rgba(50, 50, 50, 1.0);
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
-/* Date — pure white, edge via text-shadow, same width */
+/* Language 下拉框：同宽、同风格 */
+.lang-select.nav-btn {
+  margin: 0;
+  color: #ffffff;
+  background: rgba(32, 32, 32, 1.0);
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 1.4rem;
+  background-image: linear-gradient(45deg, transparent 50%, #fff 50%),
+                    linear-gradient(135deg, #fff 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* 日期：纯白 + 深色描边，同宽 */
 .date.nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.85rem;
   letter-spacing: 0.03em;
+  background: rgba(32, 32, 32, 1.0);
   text-shadow:
     1px 1px 0 #000,
     -1px 1px 0 #000,
@@ -174,8 +191,8 @@ function logout() {
     white-space: normal;
   }
   .nav-btn {
-    min-width: 90px;
-    width: 90px;
+    min-width: 110px;
+    font-size: 0.8rem;
   }
 }
 </style>

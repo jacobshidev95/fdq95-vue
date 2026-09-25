@@ -56,29 +56,50 @@ const showPreview = ref(false)
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 
-async function onStartRecord() {
-  try {
-    await recorder.start()
-  } catch (e: any) {
-    alert(i18n.t('recording_upload_failed') + ': ' + (e?.message || ''))
-  }
+function fmtRecTime(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
-async function onStopRecord() {
+
+// ★ 单个"录制/结束"切换按钮
+async function onToggleRecordEnd() {
+  if (!recorder.isRecording.value) {
+    // 开始录制
+    try {
+      await recorder.start()
+    } catch (e: any) {
+      alert((i18n.t('recording_upload_failed') || 'Record failed') + ': ' + (e?.message || ''))
+    }
+    return
+  }
+
+  // 停止录制 → 弹预览
   const blob = await recorder.stop()
   if (blob && blob.size > 0) {
-    // ★ 弹出预览弹窗
     showPreview.value = true
+  } else {
+    // 没录到东西，直接结束
+    await endLiveAndReturn()
   }
 }
+
 function onPreviewDiscard() {
   recorder.discard()
   showPreview.value = false
+  void endLiveAndReturn()
 }
+
 async function onPreviewConfirm() {
   const blob = recorder.takeBlob()
-  if (!blob) { showPreview.value = false; return }
+  if (!blob) {
+    showPreview.value = false
+    await endLiveAndReturn()
+    return
+  }
   await uploadAndPublish(blob)
   showPreview.value = false
+  await endLiveAndReturn()
 }
 
 async function uploadAndPublish(blob: Blob) {
@@ -106,19 +127,22 @@ async function uploadAndPublish(blob: Blob) {
       duration_sec: recorder.duration.value,
       file_size: upload.size,
     })
-    alert(i18n.t('recording_uploaded'))
+    alert(i18n.t('recording_uploaded') || 'Recording published')
   } catch (e: any) {
-    alert(e?.response?.data?.detail || i18n.t('recording_upload_failed'))
+    alert(e?.response?.data?.detail || i18n.t('recording_upload_failed') || 'Upload failed')
   } finally {
     isUploading.value = false
     uploadProgress.value = 0
   }
 }
 
-function fmtRecTime(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+async function endLiveAndReturn() {
+  try {
+    await liveApi.end(roomId.value)
+  } catch (e) {
+    console.warn('[end] failed', e)
+  }
+  router.replace('/live')
 }
 
 async function loadAll() {
@@ -160,32 +184,6 @@ function startPolling() {
   }, 15000)
 }
 
-async function onEndLive() {
-  // ★ 未处理的录制先拦截
-  if (recorder.pendingBlob.value) {
-    alert(i18n.t('recording_pending_warning'))
-    showPreview.value = true
-    return
-  }
-  if (!confirm('End this live stream?')) return
-
-  let blob: Blob | null = null
-  if (recorder.isRecording.value) {
-    blob = await recorder.stop()
-  }
-  try { await liveApi.end(roomId.value) } catch (e) { console.warn(e) }
-
-  if (blob && blob.size > 0) {
-    // 结束前刚录完的，弹预览（用户决定是否上传）
-    showPreview.value = true
-    // 注意：此时直播会话已结束，如果用户选择 Publish，
-    // uploadAndPublish 依然会走 /api/videos 正常发布。
-    // 若用户选 Discard，那就直接跳回大厅。
-  } else {
-    router.replace('/live')
-  }
-}
-
 function saveTitleAndCategory() {
   localStorage.setItem('fdq95_live_title', liveTitle.value)
   if (liveCategory.value) localStorage.setItem('fdq95_live_category', liveCategory.value)
@@ -225,7 +223,14 @@ async function inviteFriend(userStringId: string) {
   }
 }
 
-function goBack() { router.back() }
+function goBack() {
+  if (recorder.isRecording.value) {
+    if (!confirm(i18n.t('recording_pending_warning') || 'You are recording. Leave anyway?')) return
+    void recorder.stop()
+    recorder.discard()
+  }
+  router.back()
+}
 
 onMounted(async () => {
   document.documentElement.style.overflow = 'hidden'
@@ -307,29 +312,25 @@ onBeforeUnmount(() => {
             ❤️<span class="label">{{ i18n.t('live_btn_like') }}</span>
           </button>
 
-          <!-- ★ 单个"录制/停止"切换按钮 -->
+          <!-- ★ 单个切换按钮：Record / End -->
           <button
             v-if="isHost"
             type="button"
             class="action-btn"
             :class="recorder.isRecording.value ? 'recording-btn' : 'record-btn'"
-            @click="recorder.isRecording.value ? onStopRecord() : onStartRecord()"
+            @click="onToggleRecordEnd"
           >
             <span>{{ recorder.isRecording.value ? '⏹' : '⏺' }}</span>
             <span class="label">
               {{ recorder.isRecording.value
-                  ? fmtRecTime(recorder.duration.value)
+                  ? `${fmtRecTime(recorder.duration.value)} · ${i18n.t('activity_btn_end')}`
                   : i18n.t('recording_start') }}
             </span>
           </button>
 
           <button
-            v-if="isHost" type="button" class="action-btn danger" @click="onEndLive"
-          >
-            ⏹<span class="label">{{ i18n.t('activity_btn_end') }}</span>
-          </button>
-          <button
-            type="button" class="action-btn fullscreen-btn"
+            type="button"
+            class="action-btn fullscreen-btn"
             :disabled="!canGoFullscreen && !isFullscreen"
             @click.stop="toggleFullscreen"
           >
@@ -414,7 +415,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- ★ 录制预览弹窗 -->
+    <!-- 录制预览弹窗 -->
     <RecordingPreviewDialog
       v-model:visible="showPreview"
       :video-url="recorder.pendingUrl.value"
@@ -427,57 +428,237 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* 样式与之前一致，此处省略相同部分 */
-.live-page { display: flex; flex-direction: column; width: 100vw; height: 100vh; height: 100dvh; background: #000; color: #fff; overflow: hidden; box-sizing: border-box; }
-.live-top { flex-shrink: 0; background: #0d0d0d; border-bottom: 1px solid #222; }
-.title-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.7rem; }
-.back-btn { background: transparent; border: none; color: #fff; font-size: 1.8rem; line-height: 1; cursor: pointer; padding: 0 0.2rem; flex-shrink: 0; }
-.live-title-input { flex: 1; min-width: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; padding: 0.4rem 0.7rem; font-size: 0.9rem; font-weight: 600; }
+.live-page {
+  display: flex; flex-direction: column;
+  width: 100vw; height: 100vh; height: 100dvh;
+  background: #000; color: #fff; overflow: hidden;
+  box-sizing: border-box;
+}
+.live-top {
+  flex-shrink: 0;
+  background: #0d0d0d;
+  border-bottom: 1px solid #222;
+}
+.title-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+}
+.back-btn {
+  background: transparent; border: none; color: #fff;
+  font-size: 1.8rem; line-height: 1; cursor: pointer;
+  padding: 0 0.2rem; flex-shrink: 0;
+}
+.live-title-input {
+  flex: 1; min-width: 0;
+  background: #1a1a1a; border: 1px solid #333;
+  border-radius: 8px; color: #fff;
+  padding: 0.4rem 0.7rem; font-size: 0.9rem; font-weight: 600;
+}
 .live-title-input:focus { outline: none; border-color: #8b5cf6; }
+
 .category-row { padding: 0.35rem 0.7rem 0.5rem; }
-.live-status { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 1rem; color: #ccc; }
-.live-status button { background: #8b5cf6; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
-.live-body { display: grid; grid-template-columns: 3fr 2fr; gap: 0.5rem; padding: 0.5rem; flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.live-page.is-fullscreen .live-body { grid-template-columns: 1fr; gap: 0; padding: 0; }
-.left-col { display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
-.video-frame { position: relative; flex: 1 1 auto; min-height: 0; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #222; }
-.video-call-iframe { width: 100%; height: 100%; display: block; border: 0; position: relative; z-index: 0; }
-.action-bar { display: flex; gap: 0.35rem; padding: 0; flex-shrink: 0; }
-.action-btn { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0.1rem; padding: 0.45rem 0.2rem; background: #111; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; cursor: pointer; transition: all 0.15s; font-size: 1.1rem; }
-.action-btn:hover { background: rgba(139, 92, 246, 0.15); border-color: #8b5cf6; }
-.action-btn .label { font-size: 0.68rem; color: rgba(255, 255, 255, 0.75); }
-.action-btn.danger { border-color: rgba(231, 76, 60, 0.6); background: rgba(231, 76, 60, 0.1); }
-.action-btn.fullscreen-btn { border-color: rgba(139, 92, 246, 0.6); background: rgba(139, 92, 246, 0.25); }
-.action-btn.record-btn { border-color: rgba(231, 76, 60, 0.5); color: #ff8a80; }
-.action-btn.recording-btn { border-color: #e74c3c; background: rgba(231, 76, 60, 0.25); color: #fff; animation: recPulse 1.2s infinite; }
-@keyframes recPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); } }
-.upload-bar { flex-shrink: 0; padding: 0.4rem 0.6rem; background: rgba(139, 92, 246, 0.12); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 8px; color: #c4b5fd; font-size: 0.8rem; }
-.upload-track { margin-top: 0.3rem; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
-.upload-fill { height: 100%; background: linear-gradient(90deg, #8b5cf6, #6366f1); transition: width 0.2s; }
-.right-col { display: grid; grid-template-rows: 1fr 1fr; gap: 0.5rem; min-height: 0; min-width: 0; overflow: hidden; }
-.field-camera-frame { position: relative; width: 100%; height: 100%; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #222; }
-.field-camera-iframe { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border: 0; }
-.audience-panel { min-height: 0; display: flex; flex-direction: column; background: #111; border-radius: 10px; border: 1px solid #222; overflow: hidden; }
-.audience-messages { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.5rem 0.7rem; display: flex; flex-direction: column; gap: 0.3rem; }
-.empty-hint { color: rgba(255, 255, 255, 0.35); font-size: 0.8rem; text-align: center; padding: 0.8rem 0; }
+
+.live-status {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex: 1; gap: 1rem; color: #ccc;
+}
+.live-status button {
+  background: #8b5cf6; color: #fff;
+  border: none; padding: 0.5rem 1rem;
+  border-radius: 8px; cursor: pointer;
+}
+
+.live-body {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 0.5rem; padding: 0.5rem;
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+}
+.live-page.is-fullscreen .live-body {
+  grid-template-columns: 1fr;
+  gap: 0; padding: 0;
+}
+.left-col {
+  display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
+}
+.video-frame {
+  position: relative;
+  flex: 1 1 auto; min-height: 0;
+  background: #000; border-radius: 10px;
+  overflow: hidden; border: 1px solid #222;
+}
+.video-call-iframe {
+  width: 100%; height: 100%; display: block; border: 0;
+  position: relative; z-index: 0;
+}
+.action-bar {
+  display: flex; gap: 0.35rem; padding: 0; flex-shrink: 0;
+}
+.action-btn {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 0.1rem;
+  padding: 0.45rem 0.2rem;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px; color: #fff;
+  cursor: pointer; transition: all 0.15s;
+  font-size: 1.1rem;
+}
+.action-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: #8b5cf6;
+}
+.action-btn .label {
+  font-size: 0.68rem; color: rgba(255, 255, 255, 0.75);
+}
+.action-btn.like:hover {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: #e74c3c;
+}
+.action-btn.fullscreen-btn {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.25);
+}
+.action-btn.fullscreen-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.7);
+}
+.action-btn.fullscreen-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+/* 录制按钮（未录制） */
+.action-btn.record-btn {
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #ff8a80;
+}
+/* 录制按钮（录制中） */
+.action-btn.recording-btn {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.25);
+  color: #fff;
+  animation: recPulse 1.2s infinite;
+}
+@keyframes recPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+}
+
+.upload-bar {
+  flex-shrink: 0;
+  padding: 0.4rem 0.6rem;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  color: #c4b5fd;
+  font-size: 0.8rem;
+}
+.upload-track {
+  margin-top: 0.3rem;
+  height: 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.upload-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  transition: width 0.2s;
+}
+
+.right-col {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 0.5rem;
+  min-height: 0; min-width: 0;
+  overflow: hidden;
+}
+.field-camera-frame {
+  position: relative;
+  width: 100%; height: 100%;
+  background: #000; border-radius: 10px;
+  overflow: hidden; border: 1px solid #222;
+}
+.field-camera-iframe {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block; border: 0;
+}
+.audience-panel {
+  min-height: 0;
+  display: flex; flex-direction: column;
+  background: #111; border-radius: 10px;
+  border: 1px solid #222; overflow: hidden;
+}
+.audience-messages {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  padding: 0.5rem 0.7rem;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.empty-hint {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.8rem; text-align: center; padding: 0.8rem 0;
+}
 .audience-msg { font-size: 0.82rem; line-height: 1.35; word-break: break-word; }
 .msg-from { color: #c4b5fd; font-weight: 600; margin-right: 0.25rem; }
 .msg-text { color: #fff; }
 .msg-time { color: rgba(255, 255, 255, 0.35); font-size: 0.68rem; margin-left: 0.35rem; }
-.audience-input-row { display: flex; gap: 0.35rem; padding: 0.4rem 0.5rem; background: #0d0d0d; border-top: 1px solid #222; flex-shrink: 0; }
-.audience-input { flex: 1; min-width: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
-.send-btn { background: #8b5cf6; color: #fff; border: none; border-radius: 6px; padding: 0 0.85rem; font-weight: 600; font-size: 0.82rem; cursor: pointer; }
+.audience-input-row {
+  display: flex; gap: 0.35rem; padding: 0.4rem 0.5rem;
+  background: #0d0d0d; border-top: 1px solid #222; flex-shrink: 0;
+}
+.audience-input {
+  flex: 1; min-width: 0;
+  background: #1a1a1a; border: 1px solid #333;
+  border-radius: 6px; color: #fff;
+  padding: 0.4rem 0.6rem; font-size: 0.85rem;
+}
+.send-btn {
+  background: #8b5cf6; color: #fff; border: none;
+  border-radius: 6px; padding: 0 0.85rem;
+  font-weight: 600; font-size: 0.82rem; cursor: pointer;
+}
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 200; }
-.modal { width: 90%; max-width: 480px; max-height: 80vh; overflow-y: auto; background: #111; border: 1px solid #333; border-radius: 12px; padding: 1rem; color: #fff; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.modal {
+  width: 90%; max-width: 480px; max-height: 80vh;
+  overflow-y: auto; background: #111;
+  border: 1px solid #333; border-radius: 12px;
+  padding: 1rem; color: #fff;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.8rem;
+}
 .modal-header h3 { margin: 0; font-size: 1rem; }
-.modal-header button { background: transparent; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; }
+.modal-header button {
+  background: transparent; border: none;
+  color: #fff; font-size: 1.1rem; cursor: pointer;
+}
 .modal-section { margin-bottom: 1rem; }
 .modal-section h4 { margin: 0 0 0.4rem; font-size: 0.85rem; opacity: 0.7; }
 .modal-section ul { list-style: none; padding: 0; margin: 0; }
-.modal-section li { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #222; font-size: 0.85rem; }
-.modal-section li button { background: #8b5cf6; color: #fff; border: none; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+.modal-section li {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; padding: 0.4rem 0;
+  border-bottom: 1px solid #222; font-size: 0.85rem;
+}
+.modal-section li button {
+  background: #8b5cf6; color: #fff;
+  border: none; padding: 0.25rem 0.6rem;
+  border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+}
 .muted { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
-@media (max-width: 900px) { .live-body { grid-template-columns: 1fr; gap: 0.4rem; padding: 0.4rem; overflow-y: auto; } }
+
+@media (max-width: 900px) {
+  .live-body {
+    grid-template-columns: 1fr;
+    gap: 0.4rem; padding: 0.4rem; overflow-y: auto;
+  }
+}
 </style>

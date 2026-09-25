@@ -352,6 +352,14 @@ onMounted(async () => {
         ✉️ {{ i18n.t('change_email') }}
       </button>
 
+      <button
+        v-if="isSystemAdmin"
+        class="btn top-btn bg-dark-btn"
+        @click="openChangeEmail"
+      >
+        ✉️ {{ i18n.t('change_email') }}
+      </button>
+
       <!-- ★ User Pages：背景改为纯深色 -->
       <button class="btn top-btn bg-dark-btn" @click="goUserPages">
         👤 {{ i18n.t('back_to_user_pages') }}
