@@ -19,7 +19,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import current_active_user
+# ★ 引入可选用户依赖
+from app.auth import current_active_user, current_user
 from app.database import get_async_session
 from app.models import (
     Friend,
@@ -188,11 +189,12 @@ async def end_live(
     return {"ok": True, "status": "ended"}
 
 
+# ★★★ 修改：可选登录，未登录也能看大厅
 @router.get("/active", response_model=list[LiveSessionRead])
 async def list_active(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    me: User = Depends(current_active_user),
+    me: Optional[User] = Depends(current_user),   # ★ 从 current_active_user 改为 current_user
     session: AsyncSession = Depends(get_async_session),
 ):
     rows = (
@@ -333,6 +335,7 @@ async def list_invitees(
         }
         for u, p in rows
     ]
+
 
 @router.get("/replays/{user_string_id}", response_model=list[LiveReplayRead])
 async def list_user_replays(
