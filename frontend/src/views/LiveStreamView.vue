@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
 
 /* iframe 比容器高，从顶部对齐 */
 .field-camera-iframe {
-  width: 100%; height: 100%; display: block; border: 0;
+  width: 100%; height: 500px; display: block; border: 0;
   position: relative;
   z-index: 0;
 }
