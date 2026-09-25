@@ -479,12 +479,9 @@ onBeforeUnmount(() => {
 
 /* iframe 比容器高，从顶部对齐 */
 .field-camera-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 130%;          /* ★ 关键：130% 让内容撑满 Panel，可微调 */
-  border: 0;
+  width: 100%; height: 100%; display: block; border: 0;
+  position: relative;
+  z-index: 0;
 }
 
 /* 聊天 Panel：与相机 Panel 等高 */
