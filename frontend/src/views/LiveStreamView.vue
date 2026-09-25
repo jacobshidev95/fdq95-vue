@@ -466,27 +466,24 @@ onBeforeUnmount(() => {
 }
 
 /* 场地相机容器：底部对齐 */
+/* 场地相机容器：固定裁切边界 */
 .field-camera-frame {
   position: relative;
   width: 100%;
   height: 100%;
   background: #000;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: hidden;      /* ★ 关键：裁掉 iframe 超出底部的部分 */
   border: 1px solid #222;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
 }
 
-/* iframe 高度小于容器，内容自然下移 */
+/* iframe 比容器高，从顶部对齐 */
 .field-camera-iframe {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 90%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  height: 130%;          /* ★ 关键：130% 让内容撑满 Panel，可微调 */
   border: 0;
 }
 
