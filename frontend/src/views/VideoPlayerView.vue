@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
         >▲</button>
         <button
           class="nav-arrow down"
-          :disabled="currentIndex >= videos.value.length - 1"
+          :disabled="currentIndex >= videos.length - 1"
           @click.stop="nextVideo"
           :title="i18n.t('video_tab_next') || 'Next'"
         >▼</button>
