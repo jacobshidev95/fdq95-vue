@@ -170,7 +170,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="live-page" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- ★ 顶部栏：仅在全屏时整体隐藏（标题 + 分类一并消失） -->
+    <!-- 顶部栏：仅全屏时隐藏（标题 + 分类一并消失） -->
     <div v-show="!isFullscreen" class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -200,7 +200,6 @@ onBeforeUnmount(() => {
       <button @click="router.replace('/live')">返回大厅</button>
     </div>
 
-    <!-- ★ 主体：无论是否全屏，左右两列都保留 -->
     <main v-else class="live-body">
       <section class="left-col">
         <div class="video-frame">
@@ -213,7 +212,7 @@ onBeforeUnmount(() => {
             allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; screen-wake-lock"
           />
 
-          <!-- 全屏时浮动退出按钮 -->
+          <!-- 全屏时浮动退出按钮（作为额外入口） -->
           <button
             v-if="isFullscreen"
             type="button"
@@ -222,7 +221,8 @@ onBeforeUnmount(() => {
           >⤡ 退出全屏</button>
         </div>
 
-        <div v-show="!isFullscreen" class="action-bar">
+        <!-- ★ 操作栏：全屏时也保留 -->
+        <div class="action-bar">
           <button type="button" class="action-btn">🎁<span class="label">礼物</span></button>
           <button type="button" class="action-btn">😊<span class="label">表情</span></button>
           <button
@@ -248,19 +248,27 @@ onBeforeUnmount(() => {
             class="action-btn danger"
             @click="onEndLive"
           >⏹<span class="label">结束</span></button>
+          <!-- ★ 全屏按钮：文字随状态切换 -->
           <button
             type="button"
             class="action-btn fullscreen-btn"
-            :disabled="!canGoFullscreen"
-            :title="canGoFullscreen ? '全屏/还原' : '请先设置好标题和分类'"
+            :disabled="!canGoFullscreen && !isFullscreen"
+            :title="
+              isFullscreen
+                ? '退出全屏'
+                : canGoFullscreen
+                ? '全屏'
+                : '请先设置好标题和分类'
+            "
             @click.stop="toggleFullscreen"
           >
-            ⛶<span class="label">全屏</span>
+            <template v-if="isFullscreen">⤡<span class="label">退出全屏</span></template>
+            <template v-else>⛶<span class="label">全屏</span></template>
           </button>
         </div>
       </section>
 
-      <!-- ★ 右侧列：全屏时也保留 -->
+      <!-- 右侧列：全屏时也保留 -->
       <aside class="right-col">
         <div class="field-camera-frame">
           <iframe
@@ -382,7 +390,6 @@ onBeforeUnmount(() => {
   border-radius: 8px; cursor: pointer;
 }
 
-/* ★ 主体：全屏和非全屏都是 3:2 网格 */
 .live-body {
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -470,20 +477,16 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
-/* ★★★ 右侧列：关键修改 —— 去掉滚动条，按比例显示 */
 .right-col {
   display: flex; flex-direction: column;
   gap: 0.5rem; min-height: 0; min-width: 0;
   overflow: hidden;
-  /* 去掉 padding-top，防止溢出 */
 }
-
-/* ★ 场地相机：用 aspect-ratio 按 4:3 比例，不出现滚动条 */
 .field-camera-frame {
   flex: 0 0 auto;
   width: 100%;
   aspect-ratio: 4 / 3;
-  max-height: 42vh;                 /* 大屏时限制最大高度 */
+  max-height: 42vh;
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
   position: relative;
@@ -494,8 +497,6 @@ onBeforeUnmount(() => {
   width: 100%; height: 100%;
   display: block; border: 0;
 }
-
-/* 聊天框：占据剩余空间 */
 .audience-panel {
   flex: 1 1 auto; min-height: 120px;
   display: flex; flex-direction: column;
