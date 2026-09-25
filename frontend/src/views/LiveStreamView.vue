@@ -38,9 +38,7 @@ const fieldCameraUrl = computed(() =>
   isHost.value ? FIELD_CAMERA_BASE : `${FIELD_CAMERA_BASE}?readonly=1`
 )
 
-// ★ 全屏切换
 const isFullscreen = ref(false)
-
 const canGoFullscreen = computed(
   () => !!liveTitle.value.trim() && !!liveCategory.value,
 )
@@ -172,7 +170,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="live-page" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- ★ 顶部栏：全屏时保留标题栏本身 -->
+    <!-- 顶部栏：全屏时保留标题栏（含返回键、标题输入），仅隐藏分类 -->
     <div class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -186,25 +184,7 @@ onBeforeUnmount(() => {
           :disabled="!isHost"
           @blur="saveTitleAndCategory"
         />
-        <div class="role-badge" :class="{ moderator: isHost }">
-          {{ isHost ? '主播' : '观众' }}
-        </div>
-        <!-- ★★★ 全屏/还原按钮：标题栏右侧，永远可见 -->
-        <button
-          type="button"
-          class="fullscreen-toggle"
-          :disabled="!canGoFullscreen"
-          :title="
-            !canGoFullscreen
-              ? '请先设置好标题和分类'
-              : isFullscreen
-              ? '退出全屏'
-              : '全屏'
-          "
-          @click.stop="toggleFullscreen"
-        >
-          {{ isFullscreen ? '⤡ 还原' : '⤢ 全屏' }}
-        </button>
+        <!-- ★ 已移除角色徽章 -->
       </div>
 
       <div v-show="!isFullscreen" class="category-row">
@@ -234,8 +214,17 @@ onBeforeUnmount(() => {
             frameborder="0"
             allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; screen-wake-lock"
           />
+
+          <!-- ★ 全屏时浮动退出按钮（因为操作栏被隐藏了） -->
+          <button
+            v-if="isFullscreen"
+            type="button"
+            class="exit-fullscreen-float"
+            @click.stop="toggleFullscreen"
+          >⤡ 退出全屏</button>
         </div>
 
+        <!-- 操作栏：全屏时隐藏；全屏按钮放在最后 -->
         <div v-show="!isFullscreen" class="action-bar">
           <button type="button" class="action-btn">🎁<span class="label">礼物</span></button>
           <button type="button" class="action-btn">😊<span class="label">表情</span></button>
@@ -262,10 +251,20 @@ onBeforeUnmount(() => {
             class="action-btn danger"
             @click="onEndLive"
           >⏹<span class="label">结束</span></button>
+          <!-- ★★★ 全屏按钮：放在操作栏最右，与视频右边缘对齐 -->
+          <button
+            type="button"
+            class="action-btn fullscreen-btn"
+            :disabled="!canGoFullscreen"
+            :title="canGoFullscreen ? '全屏/还原' : '请先设置好标题和分类'"
+            @click.stop="toggleFullscreen"
+          >
+            ⛶<span class="label">全屏</span>
+          </button>
         </div>
       </section>
 
-      <!-- ★★★ 右侧列：全屏时隐藏；场地相机占更多高度 -->
+      <!-- 右侧列：全屏时隐藏；相机往下移 -->
       <aside v-show="!isFullscreen" class="right-col">
         <div class="field-camera-frame">
           <iframe
@@ -373,42 +372,6 @@ onBeforeUnmount(() => {
   padding: 0.4rem 0.7rem; font-size: 0.9rem; font-weight: 600;
 }
 .live-title-input:focus { outline: none; border-color: #8b5cf6; }
-.role-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px; font-size: 0.7rem; font-weight: 600;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  flex-shrink: 0;
-}
-.role-badge.moderator {
-  background: rgba(229, 184, 11, 0.2);
-  color: #e5b80b; border: 1px solid #e5b80b;
-}
-
-/* ★ 全屏/还原按钮：标题栏右侧，紫色醒目 */
-.fullscreen-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.6);
-  background: rgba(139, 92, 246, 0.7);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
-}
-.fullscreen-toggle:hover:not(:disabled) {
-  background: #8b5cf6;
-  border-color: #8b5cf6;
-}
-.fullscreen-toggle:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
 
 .category-row { padding: 0.35rem 0.7rem 0.5rem; }
 
@@ -430,7 +393,6 @@ onBeforeUnmount(() => {
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
 
-/* ★ 全屏时：单列 + 无 padding */
 .live-page.is-fullscreen .live-body {
   grid-template-columns: 1fr;
   gap: 0;
@@ -441,6 +403,7 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
 }
 .video-frame {
+  position: relative;
   flex: 1 1 auto; min-height: 0;
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
@@ -453,6 +416,28 @@ onBeforeUnmount(() => {
   width: 100%; height: 100%; display: block; border: 0;
   position: relative;
   z-index: 0;
+}
+
+/* 全屏时的浮动退出按钮 */
+.exit-fullscreen-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s, border-color 0.15s;
+}
+.exit-fullscreen-float:hover {
+  background: rgba(139, 92, 246, 0.85);
+  border-color: #8b5cf6;
 }
 
 .action-bar {
@@ -485,23 +470,39 @@ onBeforeUnmount(() => {
   background: rgba(231, 76, 60, 0.1);
 }
 
-/* ★★★ 右侧列：场地相机占更多高度，聊天框保留最小空间 */
+/* ★ 全屏按钮：紫色，加粗，与视频右边缘对齐 */
+.action-btn.fullscreen-btn {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.25);
+  color: #fff;
+}
+.action-btn.fullscreen-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.7);
+  border-color: #8b5cf6;
+}
+.action-btn.fullscreen-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 右侧列 */
 .right-col {
   display: flex; flex-direction: column;
   gap: 0.5rem; min-height: 0;
   overflow: hidden;
+  padding-top: 30px;                /* ★ 整列往下推 */
 }
 
-/* ★ 场地相机：去掉固定 16/9 限制，改为自适应 + 最小高度 */
+/* ★ 场地相机：往下移 + 固定高度，保证图像+控制按钮完整显示 */
 .field-camera-frame {
-  flex: 1 1 auto;                 /* 从 0 0 auto 改成 1 1 auto，撑满可用空间 */
-  min-height: 260px;              /* 保底高度，保证相机 UI 完整显示 */
+  flex: 0 0 auto;
+  height: 340px;                    /* ★ 固定高度 */
+  margin-top: 10px;                 /* ★ 再往下推一点 */
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
 }
 .field-camera-iframe { width: 100%; height: 100%; display: block; border: 0; }
 
-/* 聊天框：给场地相机让出空间后，聊天框保留最小 200px */
 .audience-panel {
   flex: 1 1 auto; min-height: 200px;
   display: flex; flex-direction: column;
