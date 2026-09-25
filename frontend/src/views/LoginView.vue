@@ -133,16 +133,15 @@ function onDontShowChange() {
     </button>
 
     <div class="aux-actions">
-      <button class="btn btn-outline aux-btn" @click="goForgotPassword">
+      <button class="btn aux-btn" @click="goForgotPassword">
         {{ i18n.t('forgot_password') }}
       </button>
-      <button class="btn btn-outline aux-btn" @click="goRegister">
+      <button class="btn aux-btn" @click="goRegister">
         {{ i18n.t('register') }}
       </button>
-      <button class="btn btn-outline aux-btn" @click="goFaceRecognition">
+      <button class="btn aux-btn" @click="goFaceRecognition">
         {{ i18n.t('face_recognition') }}
       </button>
-    </div>
   </div>
 
   <div v-if="showFacePrompt" class="modal-overlay">
@@ -201,6 +200,17 @@ function onDontShowChange() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* ★ 新增：深色背景 + 白字 */
+  background: rgba(32, 32, 32, 1.0);
+  color: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.aux-btn:hover {
+  background: rgba(50, 50, 50, 1.0);
+  border-color: var(--gold);
 }
 
 .close-btn {

@@ -143,17 +143,26 @@ function logout() {
 
 /* Language 下拉框：同宽、同风格 */
 .lang-select.nav-btn {
+  width: 130px;              /* ★ 与 Login/Logout 同宽 */
+  max-width: 130px;
+  min-width: 130px;
+  padding: 0.35rem 1.4rem 0.35rem 0.5rem;
   margin: 0;
-  color: #ffffff;
   background: rgba(32, 32, 32, 1.0);
+  color: #ffffff;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: center;
+  text-align-last: center;      /* Chrome 让选中文字居中 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 1.4rem;
-  background-image: linear-gradient(45deg, transparent 50%, #fff 50%),
-                    linear-gradient(135deg, #fff 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
 }
 
 /* 日期：纯白 + 深色描边，同宽 */
