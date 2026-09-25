@@ -173,11 +173,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="live-page" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- ★ 标题 + 类别：全屏时隐藏（v-show 保留 DOM，避免 iframe 重载） -->
-    <div v-show="!isFullscreen" class="live-top">
+    <!-- ★ 顶部栏：全屏时保留标题栏本身，只隐藏标题 input 和分类 -->
+    <div class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
         <input
+          v-show="!isFullscreen"
           v-model="liveTitle"
           type="text"
           class="live-title-input"
@@ -189,8 +190,25 @@ onBeforeUnmount(() => {
         <div class="role-badge" :class="{ moderator: isHost }">
           {{ isHost ? '主播' : '观众' }}
         </div>
+        <!-- ★★★ 全屏/还原按钮：标题栏右侧，永远可见 -->
+        <button
+          type="button"
+          class="fullscreen-toggle"
+          :disabled="!canGoFullscreen"
+          :title="
+            !canGoFullscreen
+              ? '请先设置好标题和分类'
+              : isFullscreen
+              ? '退出全屏'
+              : '全屏'
+          "
+          @click.stop="toggleFullscreen"
+        >
+          {{ isFullscreen ? '⤡ 还原' : '⤢ 全屏' }}
+        </button>
       </div>
-      <div class="category-row">
+
+      <div v-show="!isFullscreen" class="category-row">
         <CategorySelect
           v-model="liveCategory"
           storage-key="fdq95_live_category"
@@ -217,26 +235,9 @@ onBeforeUnmount(() => {
             frameborder="0"
             allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; screen-wake-lock"
           />
-
-          <!-- ★★★ 全屏/还原切换按钮（浮动在视频右上角） -->
-          <button
-            type="button"
-            class="fullscreen-toggle"
-            :disabled="!canGoFullscreen"
-            :title="
-              !canGoFullscreen
-                ? '请先设置好标题和分类'
-                : isFullscreen
-                ? '退出全屏'
-                : '全屏'
-            "
-            @click.stop="toggleFullscreen"
-          >
-            {{ isFullscreen ? '⤡' : '⤢' }}
-          </button>
         </div>
 
-        <div class="action-bar">
+        <div v-show="!isFullscreen" class="action-bar">
           <button type="button" class="action-btn">🎁<span class="label">礼物</span></button>
           <button type="button" class="action-btn">😊<span class="label">表情</span></button>
           <button
@@ -265,7 +266,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <!-- ★ 全屏时隐藏右列 -->
+      <!-- 全屏时隐藏右列 -->
       <aside v-show="!isFullscreen" class="right-col">
         <div class="field-camera-frame">
           <iframe
@@ -384,6 +385,32 @@ onBeforeUnmount(() => {
   background: rgba(229, 184, 11, 0.2);
   color: #e5b80b; border: 1px solid #e5b80b;
 }
+
+/* ★★★ 全屏/还原按钮：标题栏右侧，紫色醒目 */
+.fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.7);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fullscreen-toggle:hover:not(:disabled) {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+}
+.fullscreen-toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .category-row { padding: 0.35rem 0.7rem 0.5rem; }
 
 .live-status {
@@ -404,7 +431,7 @@ onBeforeUnmount(() => {
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
 
-/* ★ 全屏时：单列 + 无 padding，视频占满整个空间 */
+/* ★ 全屏时：单列 + 无 padding，视频占满 */
 .live-page.is-fullscreen .live-body {
   grid-template-columns: 1fr;
   gap: 0;
@@ -415,7 +442,6 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
 }
 .video-frame {
-  position: relative;                /* ★ 用于浮动按钮定位 */
   flex: 1 1 auto; min-height: 0;
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
@@ -424,43 +450,10 @@ onBeforeUnmount(() => {
   border-radius: 0;
   border: none;
 }
-
 .video-call-iframe {
-  width: 100%;
-  height: 100%;
-  display: block;
-  border: 0;
+  width: 100%; height: 100%; display: block; border: 0;
   position: relative;
-  z-index: 0;              /* ★ 让 iframe 处于最底层 */
-}
-
-/* ★★★ 全屏切换按钮 */
-.fullscreen-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 20;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-  transition: background 0.15s, border-color 0.15s;
-}
-.fullscreen-toggle:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.7);
-  border-color: #8b5cf6;
-}
-.fullscreen-toggle:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  z-index: 0;
 }
 
 .action-bar {
