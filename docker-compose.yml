@@ -86,6 +86,7 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM=${SMTP_FROM}
+      - SMTP_SECURITY=${SMTP_SECURITY}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       # ★ Whisper ASR 配置
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
