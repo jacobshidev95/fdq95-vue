@@ -38,6 +38,19 @@ const fieldCameraUrl = computed(() =>
   isHost.value ? FIELD_CAMERA_BASE : `${FIELD_CAMERA_BASE}?readonly=1`
 )
 
+// ★★★ 全屏切换
+const isFullscreen = ref(false)
+
+// 只有标题和类别都设置好了才能进全屏
+const canGoFullscreen = computed(
+  () => !!liveTitle.value.trim() && !!liveCategory.value,
+)
+
+function toggleFullscreen() {
+  if (!isFullscreen.value && !canGoFullscreen.value) return
+  isFullscreen.value = !isFullscreen.value
+}
+
 async function loadAll() {
   if (!roomId.value) {
     errorMsg.value = '缺少房间号'
@@ -110,7 +123,6 @@ function sendChatMessage() {
   chatMessage.value = ''
 }
 
-// ★ 新增：模板里需要，不能直接用 navigator/window
 function shareRoom() {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(window.location.href)
@@ -160,8 +172,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="live-page">
-    <div class="live-top">
+  <div class="live-page" :class="{ 'is-fullscreen': isFullscreen }">
+    <!-- ★ 标题 + 类别：全屏时隐藏（v-show 保留 DOM，避免 iframe 重载） -->
+    <div v-show="!isFullscreen" class="live-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
         <input
@@ -204,6 +217,23 @@ onBeforeUnmount(() => {
             frameborder="0"
             allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; screen-wake-lock"
           />
+
+          <!-- ★★★ 全屏/还原切换按钮（浮动在视频右上角） -->
+          <button
+            type="button"
+            class="fullscreen-toggle"
+            :disabled="!canGoFullscreen"
+            :title="
+              !canGoFullscreen
+                ? '请先设置好标题和分类'
+                : isFullscreen
+                ? '退出全屏'
+                : '全屏'
+            "
+            @click.stop="toggleFullscreen"
+          >
+            {{ isFullscreen ? '⤡' : '⤢' }}
+          </button>
         </div>
 
         <div class="action-bar">
@@ -235,7 +265,8 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <aside class="right-col">
+      <!-- ★ 全屏时隐藏右列 -->
+      <aside v-show="!isFullscreen" class="right-col">
         <div class="field-camera-frame">
           <iframe
             :src="fieldCameraUrl"
@@ -320,6 +351,7 @@ onBeforeUnmount(() => {
   background: #000; color: #fff; overflow: hidden;
   box-sizing: border-box;
 }
+
 .live-top {
   flex-shrink: 0;
   background: #0d0d0d;
@@ -371,15 +403,57 @@ onBeforeUnmount(() => {
   gap: 0.5rem; padding: 0.5rem;
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
+
+/* ★ 全屏时：单列 + 无 padding，视频占满整个空间 */
+.live-page.is-fullscreen .live-body {
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 0;
+}
+
 .left-col {
   display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
 }
 .video-frame {
+  position: relative;                /* ★ 用于浮动按钮定位 */
   flex: 1 1 auto; min-height: 0;
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
 }
+.live-page.is-fullscreen .video-frame {
+  border-radius: 0;
+  border: none;
+}
 .video-call-iframe { width: 100%; height: 100%; display: block; border: 0; }
+
+/* ★★★ 全屏切换按钮 */
+.fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s;
+}
+.fullscreen-toggle:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.7);
+  border-color: #8b5cf6;
+}
+.fullscreen-toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
 .action-bar {
   display: flex; gap: 0.35rem; padding: 0; flex-shrink: 0;
