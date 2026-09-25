@@ -213,9 +213,27 @@ function logout() {
     font-size: 1rem;
     white-space: normal;
   }
+
   .nav-btn {
-    min-width: 110px;
-    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 130px;              /* ★ 固定宽度，禁止拉伸 */
+    width: 130px;
+    min-width: 0;
+    max-width: 130px;
+    box-sizing: border-box;
+    padding: 0.4rem 0.75rem;
+    background: rgba(32, 32, 32, 1.0);
+    color: #ffffff;
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
   }
 }
 </style>
