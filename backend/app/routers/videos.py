@@ -55,8 +55,18 @@ async def feed(
         if not friend_ids:
             return {"videos": []}
         stmt = stmt.where(Video.user_id.in_(friend_ids))
-    elif tab in ("recommend", "activity"):
-        pass
+    elif tab == "live":
+        # ★ 只显示录制的 Live 视频
+        stmt = stmt.where(Video.category == ServiceCategory.LIVE)
+    elif tab == "activity":
+        # ★ 只显示录制的 Activity 视频
+        stmt = stmt.where(Video.category == ServiceCategory.ACTIVITY)
+    elif tab == "recommend":
+        # 推荐：排除 live / activity（只显示普通视频）
+        stmt = stmt.where(
+            Video.category.notin_([ServiceCategory.LIVE, ServiceCategory.ACTIVITY])
+        )
+    # 其它未知 tab：不过滤，返回全部
 
     stmt = stmt.order_by(desc(Video.created_at)).limit(limit)
     videos = (await session.execute(stmt)).scalars().all()

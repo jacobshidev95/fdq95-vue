@@ -44,7 +44,8 @@ class ServiceCategory(str, enum.Enum):
     IOT = "iot"
     LIFE = "life"
     AI = "ai"
-
+    LIVE = "live"           # ★ 新增
+    ACTIVITY = "activity"   # ★ 新增
 
 class ProviderLevel(str, enum.Enum):
     SYSTEM_ADMIN = "level_0"
