@@ -9,6 +9,7 @@ import ActivityStatsPanel from '@/components/activity/ActivityStatsPanel.vue'
 import PersonalStatsPanel from '@/components/activity/PersonalStatsPanel.vue'
 import PersonalDataUploadDialog from '@/components/activity/PersonalDataUploadDialog.vue'
 import { api } from '@/api/client'
+import { useRecording } from '@/composables/useRecording'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,6 +43,34 @@ const canGoFullscreen = computed(
 function toggleFullscreen() {
   if (!isFullscreen.value && !canGoFullscreen.value) return
   isFullscreen.value = !isFullscreen.value
+}
+
+// ★ 全屏录制
+const recorder = useRecording({ maxDurationSec: 20 * 60, maxSizeMB: 400 })
+const uploadProgress = ref(0)
+const isUploading = ref(false)
+
+async function onStartRecord() {
+  try {
+    await recorder.start()
+  } catch (e: any) {
+    alert('无法开始录制：' + (e?.message || '权限被拒绝'))
+  }
+}
+async function onStopRecord() {
+  const blob = await recorder.stop()
+  if (blob) {
+    alert(
+      `录制已停止，大小 ${(blob.size / 1024 / 1024).toFixed(1)} MB。\n` +
+      `点击「结束」时会上传并发布。`
+    )
+  }
+}
+
+function fmtRecTime(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
 async function loadAll() {
@@ -91,12 +120,58 @@ function startPolling() {
 
 async function onEndActivity() {
   if (!confirm('确定结束这场活动吗？')) return
+
+  // 1. 若在录制，先停止
+  let blob: Blob | null = null
+  if (recorder.isRecording.value) {
+    blob = await recorder.stop()
+  }
+
+  // 2. 结束活动会话
   try {
     await liveApi.end(roomId.value)
-    router.replace('/activity')
-  } catch (e: any) {
-    alert(e?.response?.data?.detail || '结束失败')
+  } catch (e) {
+    console.warn('[end] failed', e)
   }
+
+  // 3. 上传录制并发布到 Video 表（category='activity'）
+  if (blob && blob.size > 0) {
+    isUploading.value = true
+    try {
+      const ext = blob.type.includes('mp4') ? 'mp4' : 'webm'
+      const fd = new FormData()
+      fd.append('file', blob, `activity-${Date.now()}.${ext}`)
+      const { data: upload } = await api.post(
+        '/api/videos/upload-video',
+        fd,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 1_800_000,
+          onUploadProgress: (e) => {
+            if (e.total) {
+              uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+            }
+          },
+        }
+      )
+      await api.post('/api/videos', {
+        title: activityTitle.value || '活动录制',
+        category: 'activity',        // ★ 与直播唯一区别
+        content_type: 'file',
+        url: upload.url,
+        duration_sec: recorder.duration.value,
+        file_size: upload.size,
+      })
+      alert('活动已结束，录制视频已发布到「活动」列表。')
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || '录制上传失败')
+    } finally {
+      isUploading.value = false
+      uploadProgress.value = 0
+    }
+  }
+
+  router.replace('/activity')
 }
 
 function saveTitleAndCategory() {
@@ -160,6 +235,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="activity-page" :class="{ 'is-fullscreen': isFullscreen }">
+    <!-- 顶部栏：仅全屏时隐藏 -->
     <div v-show="!isFullscreen" class="activity-top">
       <div class="title-row">
         <button type="button" class="back-btn" @click="goBack">‹</button>
@@ -206,6 +282,7 @@ onBeforeUnmount(() => {
           />
         </div>
 
+        <!-- 底部操作栏：全屏时保留 -->
         <div class="action-bar">
           <button type="button" class="action-btn">
             🎁<span class="label">{{ i18n.t('live_btn_gift') }}</span>
@@ -234,6 +311,23 @@ onBeforeUnmount(() => {
           <button type="button" class="action-btn like">
             ❤️<span class="label">{{ i18n.t('live_btn_like') }}</span>
           </button>
+
+          <!-- ★ 录制按钮：仅主播 -->
+          <button
+            v-if="isHost && !recorder.isRecording.value"
+            type="button"
+            class="action-btn record-btn"
+            @click="onStartRecord"
+          >⏺<span class="label">开始录制</span></button>
+          <button
+            v-else-if="isHost && recorder.isRecording.value"
+            type="button"
+            class="action-btn recording-btn"
+            @click="onStopRecord"
+          >
+            ⏹<span class="label">{{ fmtRecTime(recorder.duration.value) }}</span>
+          </button>
+
           <button
             v-if="isHost"
             type="button"
@@ -263,8 +357,17 @@ onBeforeUnmount(() => {
             </template>
           </button>
         </div>
+
+        <!-- 上传进度 -->
+        <div v-if="isUploading" class="upload-bar">
+          <span>正在上传录制视频… {{ uploadProgress }}%</span>
+          <div class="upload-track">
+            <div class="upload-fill" :style="{ width: uploadProgress + '%' }"></div>
+          </div>
+        </div>
       </section>
 
+      <!-- ★ 右侧列：全屏时保留 -->
       <aside class="right-col">
         <ActivityStatsPanel :room-id="roomId" class="activity-stats" />
         <PersonalStatsPanel :room-id="roomId" class="personal-stats" />
@@ -279,6 +382,7 @@ onBeforeUnmount(() => {
       </aside>
     </main>
 
+    <!-- 邀请好友弹窗 -->
     <div v-if="showInvite" class="modal-backdrop" @click.self="showInvite = false">
       <div class="modal">
         <div class="modal-header">
@@ -315,6 +419,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- 个人数据上传弹窗 -->
     <PersonalDataUploadDialog
       v-model:visible="showUploadDialog"
       :room-id="roomId"
@@ -324,11 +429,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* ★★★ 关键修改：脱离文档流，覆盖整个视口，避开系统 Logo 头部 */
 .activity-page {
-  position: fixed;              /* ★ 覆盖整个视口 */
-  inset: 0;                     /* ★ 上下左右都贴 0 */
-  z-index: 9999;                /* ★ 盖在 Logo 头部之上 */
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   background: #000;
@@ -378,6 +482,10 @@ onBeforeUnmount(() => {
   gap: 0.5rem; padding: 0.5rem;
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
+.is-fullscreen .activity-body {
+  grid-template-columns: 1fr;
+  gap: 0; padding: 0;
+}
 
 .left-col {
   display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
@@ -389,12 +497,15 @@ onBeforeUnmount(() => {
   background: #000; border-radius: 10px;
   overflow: hidden; border: 1px solid #222;
 }
+.is-fullscreen .video-frame {
+  border-radius: 0; border: none;
+}
 .video-call-iframe {
   width: 100%; height: 100%; display: block; border: 0;
-  position: relative;
-  z-index: 0;
+  position: relative; z-index: 0;
 }
 
+/* 操作栏 */
 .action-bar {
   display: flex; gap: 0.35rem; padding: 0; flex-shrink: 0;
 }
@@ -430,46 +541,83 @@ onBeforeUnmount(() => {
 }
 .action-btn.fullscreen-btn:hover:not(:disabled) {
   background: rgba(139, 92, 246, 0.7);
-  border-color: #8b5cf6;
 }
 .action-btn.fullscreen-btn:disabled {
   opacity: 0.35; cursor: not-allowed;
 }
 
+/* ★ 录制按钮 */
+.action-btn.record-btn {
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #ff8a80;
+}
+.action-btn.recording-btn {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.25);
+  color: #fff;
+  animation: recPulse 1.2s infinite;
+}
+@keyframes recPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+}
+
+/* 上传进度条 */
+.upload-bar {
+  flex-shrink: 0;
+  padding: 0.4rem 0.6rem;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  color: #c4b5fd;
+  font-size: 0.8rem;
+}
+.upload-track {
+  margin-top: 0.3rem;
+  height: 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.upload-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  transition: width 0.2s;
+}
+
+/* ★ 右侧列：3fr 1fr auto */
 .right-col {
   display: grid;
   grid-template-rows: 3fr 1fr auto;
   gap: 0.5rem;
-  min-height: 0;
-  min-width: 0;
+  min-height: 0; min-width: 0;
   overflow: hidden;
 }
-
 .activity-stats,
 .personal-stats {
   min-height: 0;
 }
 
+/* 个人数据上传按钮：与左侧 action-btn 同高 */
 .personal-upload-btn {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;          /* ★ 改成竖向排列 */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;                     /* 与 action-btn 一致 */
-  padding: 0.45rem 0.2rem;         /* ★ 与 action-btn 一致 */
+  gap: 0.1rem;
+  padding: 0.45rem 0.2rem;
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   border: none;
   border-radius: 10px;
   color: #fff;
-  font-size: 1.1rem;               /* ★ 图标字号 */
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
   transition: all 0.15s;
 }
 .personal-upload-btn .label {
-  font-size: 0.68rem;              /* ★ 与 action-btn 的 label 一致 */
+  font-size: 0.68rem;
   color: #fff;
   font-weight: 500;
 }
@@ -478,6 +626,7 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
 }
 
+/* 弹窗 */
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.7);

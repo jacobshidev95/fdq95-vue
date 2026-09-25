@@ -2,18 +2,17 @@ import os
 import uuid
 import asyncio
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import current_active_user
+from app.auth import current_active_user, current_user
 from app.database import async_session_maker, get_async_session
 from app.models import ActivityVideo, Follow, Friend, ServiceCategory, User, Video
 from app.schemas import ActivityVideoRead, VideoCreate, VideoCreateResponse, VideoRead
 from app.services.whisper_service import transcribe_video
-from typing import Optional
-from app.auth import current_active_user, current_user
 
 router = APIRouter()
 
@@ -32,7 +31,7 @@ async def _user_by_string(session: AsyncSession, sid: str) -> User:
 async def feed(
     tab: str = "recommend",
     limit: int = 20,
-    me: Optional[User] = Depends(current_user),   # ★ 改为可选用户
+    me: Optional[User] = Depends(current_user),   # ★ 可选登录
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
     limit = max(1, min(limit, 50))
@@ -62,10 +61,13 @@ async def feed(
             return {"videos": []}
         stmt = stmt.where(Video.user_id.in_(friend_ids))
     elif tab == "live":
+        # ★ 只显示录制的 Live 视频
         stmt = stmt.where(Video.category == ServiceCategory.LIVE)
     elif tab == "activity":
+        # ★ 只显示录制的 Activity 视频
         stmt = stmt.where(Video.category == ServiceCategory.ACTIVITY)
     elif tab == "recommend":
+        # 推荐：排除 live / activity（只显示普通视频）
         stmt = stmt.where(
             Video.category.notin_([ServiceCategory.LIVE, ServiceCategory.ACTIVITY])
         )
@@ -107,14 +109,16 @@ async def feed(
         })
     return {"videos": result}
 
+
 # ══════════════════════════════════════════════════════════════
 # 视频上传 + 转码
 # ══════════════════════════════════════════════════════════════
 VIDEO_UPLOAD_DIR = Path("/app/uploads/videos")
 VIDEO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-MAX_VIDEO_SIZE = 50 * 1024 * 1024
-ALLOWED_VIDEO_EXT = {".mp4"}
+# ★ 支持 webm（录制），上限提升到 500 MB
+MAX_VIDEO_SIZE = 500 * 1024 * 1024
+ALLOWED_VIDEO_EXT = {".mp4", ".webm"}
 
 
 async def _transcode_to_h264(src: Path, dst: Path) -> bool:
@@ -152,7 +156,7 @@ async def upload_video_file(
 ) -> dict:
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_VIDEO_EXT:
-        raise HTTPException(400, "Only MP4 files are allowed")
+        raise HTTPException(400, "Only MP4/WEBM files are allowed")
 
     content = await file.read()
     if len(content) > MAX_VIDEO_SIZE:
@@ -163,26 +167,33 @@ async def upload_video_file(
     user_dir = VIDEO_UPLOAD_DIR / str(me.id)
     user_dir.mkdir(parents=True, exist_ok=True)
     base = uuid.uuid4().hex
-    fname = f"{base}.mp4"
+    fname = f"{base}{ext}"                 # ★ 保留原始扩展名（mp4 / webm）
     dest = user_dir / fname
     dest.write_bytes(content)
 
     print(f"[VIDEO] {me.user_id} uploaded {len(content)}B → {dest}")
 
+    # 统一转码为 mp4（webm 也能被 ffmpeg 读取）
     tmp_out = user_dir / f"{base}.transcoded.mp4"
     ok = await _transcode_to_h264(dest, tmp_out)
 
+    final_fname = f"{base}.mp4"            # 转码成功后最终文件是 .mp4
+
     if ok and tmp_out.exists() and tmp_out.stat().st_size > 0:
         final_size = tmp_out.stat().st_size
-        dest.unlink()
-        tmp_out.rename(dest)
-        print(f"[VIDEO] transcoded → {dest} ({final_size}B)")
+        # 删除原文件（webm 或原始 mp4）
+        if dest.exists() and dest != tmp_out:
+            dest.unlink(missing_ok=True)
+        final_path = user_dir / final_fname
+        tmp_out.rename(final_path)
+        print(f"[VIDEO] transcoded → {final_path} ({final_size}B)")
         return {
-            "url": f"/uploads/videos/{me.id}/{fname}",
+            "url": f"/uploads/videos/{me.id}/{final_fname}",
             "name": file.filename,
             "size": final_size,
         }
     else:
+        # 转码失败：原样返回，扩展名保持
         if tmp_out.exists():
             tmp_out.unlink(missing_ok=True)
         return {
@@ -265,7 +276,7 @@ async def create_video(
     await session.commit()
     await session.refresh(video)
 
-    print(f"[VIDEO] {me.user_id} published '{video.title}'")
+    print(f"[VIDEO] {me.user_id} published '{video.title}' ({payload.category})")
 
     # ★ 启动后台转写（仅对本地文件）
     if payload.content_type in ("file", "record"):
