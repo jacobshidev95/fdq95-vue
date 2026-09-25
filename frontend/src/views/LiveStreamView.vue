@@ -424,14 +424,22 @@ onBeforeUnmount(() => {
   border-radius: 0;
   border: none;
 }
-.video-call-iframe { width: 100%; height: 100%; display: block; border: 0; }
+
+.video-call-iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  position: relative;
+  z-index: 0;              /* ★ 让 iframe 处于最底层 */
+}
 
 /* ★★★ 全屏切换按钮 */
 .fullscreen-toggle {
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 5;
+  z-index: 20;
   width: 38px;
   height: 38px;
   border-radius: 8px;
