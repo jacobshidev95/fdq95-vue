@@ -434,6 +434,7 @@ onBeforeUnmount(() => {
   z-index: 0;              /* ★ 让 iframe 处于最底层 */
 }
 
+
 /* ★★★ 全屏切换按钮 */
 .fullscreen-toggle {
   position: absolute;
