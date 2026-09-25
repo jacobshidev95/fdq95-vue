@@ -456,7 +456,6 @@ onBeforeUnmount(() => {
 }
 
 /* ★★★ 右侧列：两栏等高 grid */
-/* ★★★ 右侧列：两栏等高 */
 .right-col {
   display: grid;
   grid-template-rows: 1fr 1fr;
@@ -483,7 +482,7 @@ onBeforeUnmount(() => {
 /* iframe 高度小于容器，内容自然下移 */
 .field-camera-iframe {
   width: 100%;
-  height: 70%;
+  height: 100%;
   display: block;
   border: 0;
 }
