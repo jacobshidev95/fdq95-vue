@@ -477,42 +477,46 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+/* ★★★ 右列：两栏等高 */
 .right-col {
-  display: flex; flex-direction: column;
-  gap: 0.5rem; min-height: 0; min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;   /* 相机 = 聊天，各占 50% */
+  gap: 0.5rem;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
-/* 场地相机容器：固定高度 + 隐藏溢出 */
+/* 场地相机容器 */
 .field-camera-frame {
   position: relative;
-  flex: 0 0 auto;
   width: 100%;
-  height: 340px;              /* 固定高度，不再用 aspect-ratio */
+  height: 100%;
   background: #000;
   border-radius: 10px;
-  overflow: hidden;           /* 关键：裁掉 iframe 底部的多余部分 */
+  overflow: hidden;
   border: 1px solid #222;
 }
 
-/* ★ iframe 往下推 90px，让按钮贴近容器底部 5px */
+/* ★ 取消 translateY，让 iframe 正常填满容器 */
 .field-camera-iframe {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
   border: 0;
-  transform: translateY(90px);   /* ★ 这个值调大 → 内容更下移，调小 → 内容更上移 */
 }
 
+/* 聊天 Panel：与相机 Panel 等高 */
 .audience-panel {
-  flex: 1 1 auto; min-height: 120px;
-  display: flex; flex-direction: column;
-  background: #111; border-radius: 10px;
-  border: 1px solid #222; overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  border-radius: 10px;
+  border: 1px solid #222;
+  overflow: hidden;
 }
 .audience-messages {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
