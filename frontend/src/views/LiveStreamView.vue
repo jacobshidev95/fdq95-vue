@@ -481,10 +481,12 @@ onBeforeUnmount(() => {
 
 /* iframe 高度小于容器，内容自然下移 */
 .field-camera-iframe {
+  position: relative;
   width: 100%;
   height: 100%;
   display: block;
   align-items: flex-end;
+  justify-content: center;
   border: 0;
 }
 
