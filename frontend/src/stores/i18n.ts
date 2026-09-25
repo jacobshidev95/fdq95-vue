@@ -463,6 +463,14 @@ export const BASE_TEXT: Record<string, string> = {
   no_lives_in_category: 'No live streams in this category',
   show_all: 'Show all',
   load_failed: 'Load failed',
+  // ★ 新增（个人主页）
+  profile_login_required: 'Please log in first',
+  profile_load_failed: 'Failed to load user profile, please try again',
+  friend_status_friend: 'Friends',
+  friend_status_pending: 'Requested',
+  friend_already: 'You are already friends',
+  friend_request_already_sent: 'Friend request already sent, please wait',
+  action_failed_retry: 'Action failed, please try again',
 }
 
 export const LANGUAGES: Record<string, string> = {

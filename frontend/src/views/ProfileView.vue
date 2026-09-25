@@ -34,11 +34,12 @@ const friendBtnState = computed<FriendBtnState>(() => {
   return 'idle'
 })
 
+// ★ 三个状态三种文案
 const friendBtnText = computed(() => {
   switch (friendBtnState.value) {
-    case 'friend': return i18n.t('friend_status_friend')
+    case 'friend':  return i18n.t('friend_status_friend')
     case 'pending': return i18n.t('friend_status_pending')
-    default: return i18n.t('add_as_friend')
+    default:        return i18n.t('add_as_friend')
   }
 })
 
@@ -108,7 +109,7 @@ function goUserArticles() {
   if (id) router.push(`/user/${id}/articles`)
 }
 
-// ★ 新增：跳转到该用户的 Live 回放列表
+// ★ Live Replay：跳该用户的直播回放列表
 function goLiveReplay() {
   const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/live-replays`)
@@ -132,6 +133,22 @@ function goArticleBrowse() {
   router.push('/articles')
 }
 
+// ★ 关注 / 取关
+async function onToggleFollow() {
+  if (!store.viewing?.user_string_id) return
+  if (!auth.token) {
+    alert(i18n.t('profile_login_required'))
+    goLogin()
+    return
+  }
+  try {
+    await store.toggleFollow()
+  } catch {
+    alert(i18n.t('action_failed_retry'))
+  }
+}
+
+// ★ 申请朋友
 async function addFriend() {
   if (friendBtnDisabled.value) {
     if (friendBtnState.value === 'pending') {
@@ -159,20 +176,6 @@ async function addFriend() {
     }
   } catch (e: any) {
     alert(e?.response?.data?.detail || i18n.t('friend_request_failed'))
-  }
-}
-
-async function onToggleFollow() {
-  if (!store.viewing?.user_string_id) return
-  if (!auth.token) {
-    alert(i18n.t('profile_login_required'))
-    goLogin()
-    return
-  }
-  try {
-    await store.toggleFollow()
-  } catch {
-    alert(i18n.t('action_failed_retry'))
   }
 }
 
@@ -270,7 +273,7 @@ function complaint() {
         <p class="bio-line">{{ (isSelf ? store.me : store.viewing)?.bio_line_2 || '' }}</p>
       </div>
 
-      <!-- 3 action buttons -->
+      <!-- ★★★ 三个按钮：关注 / 私信 / 申请朋友，仅查看他人主页时显示 -->
       <div v-if="!isSelf" class="action-row">
         <button
           class="action-btn follow-btn"
@@ -279,9 +282,11 @@ function complaint() {
         >
           {{ store.following ? i18n.t('unfollow') : i18n.t('follow') }}
         </button>
+
         <button class="action-btn message-btn" @click="goMessages">
           {{ i18n.t('message') }}
         </button>
+
         <button
           class="action-btn"
           :class="{
@@ -296,7 +301,7 @@ function complaint() {
         </button>
       </div>
 
-      <!-- ★ 导航按钮：Live Replay 在 Activity Replay 之前 -->
+      <!-- 导航网格：7 个按钮 → 4 + 3 两行，不换行 -->
       <nav class="nav-grid">
         <button class="nav-tile" @click="router.push('/profile')">
           🏠 {{ i18n.t('personal_home') }}
@@ -434,6 +439,7 @@ function complaint() {
   word-break: break-word;
 }
 
+/* ★★★ 三个按钮：关注 / 私信 / 申请朋友 */
 .action-row {
   display: flex;
   gap: 0.5rem;
@@ -495,13 +501,11 @@ function complaint() {
 }
 .nav-tile:hover { border-color: var(--gold); color: var(--gold); }
 
-/* ★ 中屏（平板）：3 列 */
 @media (max-width: 720px) {
   .nav-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .nav-tile { font-size: 0.7rem; padding: 0.65rem 0.3rem; }
 }
 
-/* ★ 小屏（手机）：2 列 */
 @media (max-width: 480px) {
   .profile-page { padding: 1rem 0.75rem 2rem; }
   .avatar { width: 60px; height: 60px; font-size: 1rem; }
