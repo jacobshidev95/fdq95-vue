@@ -482,21 +482,32 @@ onBeforeUnmount(() => {
   gap: 0.5rem; min-height: 0; min-width: 0;
   overflow: hidden;
 }
+
+/* 场地相机容器：固定高度 + 隐藏溢出 */
 .field-camera-frame {
+  position: relative;
   flex: 0 0 auto;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  max-height: 42vh;
-  background: #000; border-radius: 10px;
-  overflow: hidden; border: 1px solid #222;
-  position: relative;
+  height: 340px;              /* 固定高度，不再用 aspect-ratio */
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;           /* 关键：裁掉 iframe 底部的多余部分 */
+  border: 1px solid #222;
 }
+
+/* ★ iframe 往下推 90px，让按钮贴近容器底部 5px */
 .field-camera-iframe {
   position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  display: block; border: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  transform: translateY(90px);   /* ★ 这个值调大 → 内容更下移，调小 → 内容更上移 */
 }
+
 .audience-panel {
   flex: 1 1 auto; min-height: 120px;
   display: flex; flex-direction: column;
