@@ -456,6 +456,7 @@ onBeforeUnmount(() => {
 }
 
 /* ★★★ 右侧列：两栏等高 grid */
+/* ★★★ 右侧列：两栏等高 */
 .right-col {
   display: grid;
   grid-template-rows: 1fr 1fr;
@@ -465,7 +466,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* 场地相机容器 */
+/* 场地相机容器：底部对齐 */
 .field-camera-frame {
   position: relative;
   width: 100%;
@@ -474,17 +475,17 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #222;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-/* 相机 iframe：往下推，让按钮贴近 Panel 底部 */
+/* iframe 高度小于容器，内容自然下移 */
 .field-camera-iframe {
-  position: absolute;
-  inset: 0;
   width: 100%;
-  height: 100%;
+  height: 70%;
   display: block;
   border: 0;
-  transform: translateY(60px);   /* ★ 可微调：60px / 80px / 100px */
 }
 
 /* 聊天 Panel：与相机 Panel 等高 */
@@ -497,6 +498,7 @@ onBeforeUnmount(() => {
   border: 1px solid #222;
   overflow: hidden;
 }
+
 .audience-messages {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
   padding: 0.5rem 0.7rem;
