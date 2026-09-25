@@ -23,6 +23,18 @@ export interface LiveTokenResponse {
   expires_in: number
 }
 
+// ★ 新增：直播回放（用于 Live Replay 页面）
+export interface LiveReplay {
+  id: string
+  room_id: string
+  title: string
+  category: string | null
+  started_at: string
+  ended_at: string | null
+  viewer_count: number
+  recorded_video_url: string | null
+}
+
 export const liveApi = {
   async start(title: string, category: string | null): Promise<LiveSession> {
     const { data } = await api.post('/api/live/start', { title, category })
@@ -54,6 +66,11 @@ export const liveApi = {
   },
   async listInvitees(roomId: string) {
     const { data } = await api.get(`/api/live/${roomId}/invitees`)
+    return data
+  },
+  // ★ 新增：拉取某个用户历史直播（含录制视频 URL）
+  async listReplays(userStringId: string): Promise<LiveReplay[]> {
+    const { data } = await api.get(`/api/live/replays/${userStringId}`)
     return data
   },
 }

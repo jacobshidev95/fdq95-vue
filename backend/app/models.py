@@ -290,7 +290,6 @@ class LiveSession(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
     )
-    # 房间号 = 主播的字符串 user_id（对外可见）
     room_id: Mapped[str] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(120), default="")
     category: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -298,13 +297,16 @@ class LiveSession(Base):
     viewer_count: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False
     )
+    # ★ 新增：Jibri 录制后的视频 URL（可为空）
+    recorded_video_url: Mapped[str | None] = mapped_column(
+        String(512), nullable=True
+    )
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     ended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-
 
 class LiveInvite(Base):
     __tablename__ = "live_invites"

@@ -455,6 +455,14 @@ export const BASE_TEXT: Record<string, string> = {
   live_send: 'Send',
   live_open: 'Go Live',
   live_open_hint: 'Start a live stream',
+  live: 'Live',
+  activity: 'Activity',
+  live_replay: 'Live Replay',
+  live_replay_empty: 'No recorded live streams yet',
+  all_categories: 'All',
+  no_lives_in_category: 'No live streams in this category',
+  show_all: 'Show all',
+  load_failed: 'Load failed',
 }
 
 export const LANGUAGES: Record<string, string> = {

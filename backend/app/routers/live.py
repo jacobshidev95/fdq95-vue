@@ -63,6 +63,15 @@ class LiveTokenResponse(BaseModel):
     server_url: str
     expires_in: int
 
+class LiveReplayRead(BaseModel):
+    id: uuid.UUID
+    room_id: str
+    title: str
+    category: Optional[str]
+    started_at: datetime
+    ended_at: Optional[datetime]
+    viewer_count: int
+    recorded_video_url: Optional[str]
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -323,4 +332,43 @@ async def list_invitees(
             "avatar_url": (p.avatar_url if p else None),
         }
         for u, p in rows
+    ]
+
+@router.get("/replays/{user_string_id}", response_model=list[LiveReplayRead])
+async def list_user_replays(
+    user_string_id: str,
+    me: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """某用户所有已结束的直播（可选带录制视频 URL）。"""
+    host = await session.scalar(
+        select(User).where(User.user_id == user_string_id)
+    )
+    if not host:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    rows = (
+        await session.execute(
+            select(LiveSession)
+            .where(
+                LiveSession.host_user_id == host.id,
+                LiveSession.status == "ended",
+            )
+            .order_by(desc(LiveSession.ended_at))
+            .limit(100)
+        )
+    ).scalars().all()
+
+    return [
+        LiveReplayRead(
+            id=ls.id,
+            room_id=ls.room_id,
+            title=ls.title or "",
+            category=ls.category,
+            started_at=ls.started_at,
+            ended_at=ls.ended_at,
+            viewer_count=ls.viewer_count or 0,
+            recorded_video_url=getattr(ls, "recorded_video_url", None),
+        )
+        for ls in rows
     ]

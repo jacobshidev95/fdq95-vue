@@ -90,6 +90,7 @@ async def _run_migrations() -> None:
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS subtitle_status VARCHAR(16)",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS subtitle_lang VARCHAR(8)",
         "ALTER TABLE videos ADD COLUMN IF NOT EXISTS subtitle_json JSON",
+        "ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS recorded_video_url VARCHAR(512)",
 
         "CREATE INDEX IF NOT EXISTS ix_users_is_frozen ON users (is_frozen)",
         "CREATE INDEX IF NOT EXISTS ix_users_region ON users (region)",

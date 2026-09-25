@@ -68,12 +68,10 @@ function openVideoPlayer() {
   router.push('/videos')
 }
 
-// ★ 新增：点击直播按钮跳转到直播大厅
 function openLiveHall() {
   router.push('/live')
 }
 
-// ★ 新增：点击 Activity 按钮跳转到 Activity 直播（带分类筛选）
 function openActivityLive() {
   router.push({ path: '/live', query: { category: 'activity' } })
 }
@@ -81,7 +79,6 @@ function openActivityLive() {
 
 <template>
   <section class="center-panel">
-    <!-- Tab bar: 6 buttons, all equal width -->
     <nav class="tab-bar">
       <button
         v-for="t in TABS"
@@ -95,13 +92,13 @@ function openActivityLive() {
       <button class="tab-btn play-btn" @click="openVideoPlayer">
         ▶ {{ i18n.t('play_video') }}
       </button>
-      <!-- ★ 直播按钮 -->
+      <!-- ★ 直播按钮：纯 i18n -->
       <button class="tab-btn live-btn" @click="openLiveHall">
-        <span class="live-dot" /> {{ i18n.t('live') || '直播' }}
+        <span class="live-dot" /> {{ i18n.t('live') }}
       </button>
-      <!-- ★ 新增：Activity 按钮（Live 之后） -->
+      <!-- ★ Activity 按钮：纯 i18n -->
       <button class="tab-btn activity-btn" @click="openActivityLive">
-        <span class="activity-dot" /> {{ i18n.t('activity') || '活动' }}
+        <span class="activity-dot" /> {{ i18n.t('activity') }}
       </button>
     </nav>
 
@@ -182,7 +179,6 @@ function openActivityLive() {
   overflow-y: auto;
 }
 
-/* ---------- Tab bar ---------- */
 .tab-bar {
   display: flex;
   flex-wrap: nowrap;
@@ -228,7 +224,6 @@ function openActivityLive() {
   color: #111;
 }
 
-/* ★ 直播按钮（红点脉冲） */
 .live-btn {
   display: inline-flex;
   align-items: center;
@@ -258,7 +253,6 @@ function openActivityLive() {
   50%      { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* ★ 新增：Activity 按钮（金点脉冲） */
 .activity-btn {
   display: inline-flex;
   align-items: center;
@@ -284,7 +278,6 @@ function openActivityLive() {
 }
 .activity-btn:hover .activity-dot { background: #111; }
 
-/* ---------- Content ---------- */
 .tab-content {
   padding: 1.25rem 1.5rem 2rem;
 }

@@ -36,9 +36,9 @@ const friendBtnState = computed<FriendBtnState>(() => {
 
 const friendBtnText = computed(() => {
   switch (friendBtnState.value) {
-    case 'friend': return '已是好友'
-    case 'pending': return '已申请'
-    default: return '申请朋友'
+    case 'friend': return i18n.t('friend_status_friend')
+    case 'pending': return i18n.t('friend_status_pending')
+    default: return i18n.t('add_as_friend')
   }
 })
 
@@ -64,11 +64,11 @@ async function load() {
         const status = e?.response?.status
         const detail = e?.response?.data?.detail
         if (status === 401) {
-          loadError.value = '请先登录后再查看其他用户'
+          loadError.value = i18n.t('profile_login_required')
         } else if (status === 404) {
           loadError.value = `用户 @${targetUserId.value} 不存在`
         } else {
-          loadError.value = detail || '加载用户信息失败，请刷新重试'
+          loadError.value = detail || i18n.t('profile_load_failed')
         }
       }
       try {
@@ -108,6 +108,12 @@ function goUserArticles() {
   if (id) router.push(`/user/${id}/articles`)
 }
 
+// ★ 新增：跳转到该用户的 Live 回放列表
+function goLiveReplay() {
+  const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
+  if (id) router.push(`/user/${id}/live-replays`)
+}
+
 function goActivityReplay() {
   const id = isSelf.value ? store.me?.user_string_id : store.viewing?.user_string_id
   if (id) router.push(`/user/${id}/activity-replay`)
@@ -129,44 +135,44 @@ function goArticleBrowse() {
 async function addFriend() {
   if (friendBtnDisabled.value) {
     if (friendBtnState.value === 'pending') {
-      alert('好友申请已发送，请等待对方处理')
+      alert(i18n.t('friend_request_already_sent'))
     } else if (friendBtnState.value === 'friend') {
-      alert('你们已经是好友')
+      alert(i18n.t('friend_already'))
     }
     return
   }
   const id = store.viewing?.user_string_id
   if (!id) return
   if (!auth.token) {
-    alert('请先登录')
+    alert(i18n.t('profile_login_required'))
     goLogin()
     return
   }
   try {
     const res: any = await store.sendFriendRequest(id)
     if (res?.status === 'already_friends') {
-      alert('你们已经是好友')
+      alert(i18n.t('friend_already'))
     } else if (res?.status === 'pending') {
-      alert('你已发送过申请，请等待对方处理')
+      alert(i18n.t('friend_request_already_sent'))
     } else {
-      alert('好友申请已发送，对方会收到邮件通知')
+      alert(i18n.t('friend_request_sent'))
     }
   } catch (e: any) {
-    alert(e?.response?.data?.detail || '好友申请发送失败')
+    alert(e?.response?.data?.detail || i18n.t('friend_request_failed'))
   }
 }
 
 async function onToggleFollow() {
   if (!store.viewing?.user_string_id) return
   if (!auth.token) {
-    alert('请先登录')
+    alert(i18n.t('profile_login_required'))
     goLogin()
     return
   }
   try {
     await store.toggleFollow()
   } catch {
-    alert('操作失败，请重试')
+    alert(i18n.t('action_failed_retry'))
   }
 }
 
@@ -200,14 +206,16 @@ function complaint() {
 
 <template>
   <div class="profile-page">
-    <div v-if="loading" class="state-banner">加载中…</div>
+    <div v-if="loading" class="state-banner">{{ i18n.t('video_loading') }}</div>
 
     <div v-else-if="loadError" class="state-banner error">
       <p>{{ loadError }}</p>
       <button v-if="!auth.token" class="btn btn-primary" @click="goLogin">
-        去登录
+        {{ i18n.t('login') }}
       </button>
-      <button v-else class="btn btn-outline" @click="load">重试</button>
+      <button v-else class="btn btn-outline" @click="load">
+        {{ i18n.t('video_retry') }}
+      </button>
     </div>
 
     <template v-else>
@@ -228,17 +236,19 @@ function complaint() {
             </div>
             <div class="handle">
               @{{ (isSelf ? store.me : store.viewing)?.user_string_id || '—' }}
-              <span v-if="!isSelf && store.isFriend" class="friend-badge">好友</span>
+              <span v-if="!isSelf && store.isFriend" class="friend-badge">
+                {{ i18n.t('friend_status_friend') }}
+              </span>
             </div>
           </div>
         </div>
 
         <div class="header-actions">
           <button class="article-browse-btn" @click="goArticleBrowse">
-            📄 {{ i18n.t('article_browse') === 'article_browse' ? '文章浏览' : i18n.t('article_browse') }}
+            📄 {{ i18n.t('article_browse') }}
           </button>
           <button class="video-play-btn" @click="goVideoPlay">
-            ▶ {{ i18n.t('video_play') === 'video_play' ? '视频播放' : i18n.t('video_play') }}
+            ▶ {{ i18n.t('play_video') }}
           </button>
           <div class="menu-wrap">
             <button class="menu-btn" @click="menuOpen = !menuOpen">⋯</button>
@@ -267,10 +277,10 @@ function complaint() {
           :class="{ following: store.following }"
           @click="onToggleFollow"
         >
-          {{ store.following ? '已关注' : '点加关注' }}
+          {{ store.following ? i18n.t('unfollow') : i18n.t('follow') }}
         </button>
         <button class="action-btn message-btn" @click="goMessages">
-          私信联系
+          {{ i18n.t('message') }}
         </button>
         <button
           class="action-btn"
@@ -286,16 +296,19 @@ function complaint() {
         </button>
       </div>
 
-      <!-- ★ 导航按钮：Friend List 在 Product List 后面 -->
+      <!-- ★ 导航按钮：Live Replay 在 Activity Replay 之前 -->
       <nav class="nav-grid">
         <button class="nav-tile" @click="router.push('/profile')">
           🏠 {{ i18n.t('personal_home') }}
         </button>
         <button class="nav-tile" @click="goUserArticles">
-          📄 {{ i18n.t('article_list') === 'article_list' ? '文章列表' : i18n.t('article_list') }}
+          📄 {{ i18n.t('article_list') }}
         </button>
         <button class="nav-tile" @click="goUserVideos">
           🎬 {{ i18n.t('video_list') }}
+        </button>
+        <button class="nav-tile" @click="goLiveReplay">
+          📺 {{ i18n.t('live_replay') }}
         </button>
         <button class="nav-tile" @click="goActivityReplay">
           🔁 {{ i18n.t('activity_replay') }}
@@ -459,31 +472,33 @@ function complaint() {
   color: #aaa; opacity: 0.7;
 }
 
-/* ★ 导航网格：自适应 6 列 → 3 列 → 2 列 */
+/* ★ 导航网格：7 个按钮 → 4 列两行，不换行 */
 .nav-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.4rem;
   margin-top: 0.5rem;
 }
 .nav-tile {
-  padding: 0.6rem 0.25rem;
+  padding: 0.6rem 0.3rem;
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1.25;
   cursor: pointer;
   text-align: center;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .nav-tile:hover { border-color: var(--gold); color: var(--gold); }
 
 /* ★ 中屏（平板）：3 列 */
 @media (max-width: 720px) {
   .nav-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nav-tile { font-size: 0.75rem; padding: 0.65rem 0.3rem; }
+  .nav-tile { font-size: 0.7rem; padding: 0.65rem 0.3rem; }
 }
 
 /* ★ 小屏（手机）：2 列 */
@@ -494,7 +509,7 @@ function complaint() {
   .handle { font-size: 0.78rem; }
   .action-btn { font-size: 0.78rem; padding: 0.55rem 0.3rem; min-width: 80px; }
   .nav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .nav-tile { font-size: 0.72rem; }
+  .nav-tile { font-size: 0.68rem; padding: 0.55rem 0.25rem; }
   .article-browse-btn,
   .video-play-btn { font-size: 0.72rem; padding: 0.3rem 0.5rem; }
 }

@@ -45,8 +45,8 @@ function goChannelDMs() { router.push('/settings/channel/dms') }
 function goCreatorCenter() { router.push('/settings/creator-center') }
 
 function goPublishVideo() { router.push('/settings/publish-video') }
-// ★ 改动：点击"发起直播"跳转到 /live（主持人模式）
-function goGoLive() { router.push('/live?role=moderator') }
+// ★ 改动：点击"发起直播"转到跳板页，它会自动创建 session 并跳进 /live/:roomId/host
+function goGoLive() { router.push('/settings/go-live') }
 function goLaunchActivity() { router.push('/settings/launch-activity') }
 function goPublishArticle() { router.push('/settings/publish-article') }
 
@@ -62,7 +62,6 @@ onMounted(loadProfile)
     </header>
 
     <div class="scroll-body">
-      <!-- 第一组：4 个快捷入口 -->
       <section class="grid-card">
         <button class="grid-item" @click="goLikes">
           <span class="grid-label">{{ i18n.t('settings_likes') }}</span>
@@ -82,7 +81,6 @@ onMounted(loadProfile)
         </button>
       </section>
 
-      <!-- 第二组：我的视频号 -->
       <p class="section-caption">{{ i18n.t('settings_my_channel') }}</p>
 
       <section class="card">
@@ -124,7 +122,6 @@ onMounted(loadProfile)
           <span class="row-arrow">›</span>
         </button>
 
-        <!-- ★ 底部操作：4 个按钮 -->
         <div class="quad-actions">
           <button class="quad-item" @click="goPublishArticle">
             <span class="quad-icon">📄</span>
@@ -309,7 +306,6 @@ onMounted(loadProfile)
   margin-top: 0.15rem;
 }
 
-/* ★ 4 按钮水平一排 */
 .quad-actions {
   display: flex;
   align-items: stretch;

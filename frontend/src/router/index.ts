@@ -43,6 +43,7 @@ import SettingsPublishVideoView from '@/views/SettingsPublishVideoView.vue'
 
 // ★ 新增：视频直播页
 import LiveStreamView from '@/views/LiveStreamView.vue'
+import UserLiveReplaysView from '@/views/UserLiveReplaysView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -96,7 +97,7 @@ const router = createRouter({
     { path: '/live',              name: 'live-hall', component: LiveHallView,    meta: { hideChrome: true } },
     { path: '/live/:roomId',      name: 'live-room', component: LiveStreamView,  meta: { hideChrome: true } },
     { path: '/live/:roomId/host', name: 'live-host', component: LiveStreamView,  meta: { hideChrome: true, host: true } },
-
+    { path: '/user/:userId/live-replays', name: 'user-live-replays', component: UserLiveReplaysView },
     // ── 设置页及其子页 ──
     {
       path: '/settings/likes',
