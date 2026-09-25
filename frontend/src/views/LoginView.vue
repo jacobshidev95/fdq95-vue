@@ -35,7 +35,6 @@ async function submit() {
     await auth.login(email.value, password.value)
     await profile.loadMe()
 
-    // ---- role-based redirect ----
     const lvl = auth.user?.admin_level
     const isAdmin =
       auth.user?.is_admin === true ||
@@ -48,7 +47,6 @@ async function submit() {
       return
     }
 
-    // ---- non-admin flow ----
     const dismissed =
       localStorage.getItem('fdq95_face_prompt_dismissed') === 'true'
     const enrolled = auth.user?.face_enrolled ?? false
@@ -132,6 +130,7 @@ function onDontShowChange() {
       {{ i18n.t('login') }}
     </button>
 
+    <!-- ★ 三个辅助按钮：去掉 btn-outline，用自定义 .aux-btn -->
     <div class="aux-actions">
       <button class="btn aux-btn" @click="goForgotPassword">
         {{ i18n.t('forgot_password') }}
@@ -142,6 +141,7 @@ function onDontShowChange() {
       <button class="btn aux-btn" @click="goFaceRecognition">
         {{ i18n.t('face_recognition') }}
       </button>
+    </div>
   </div>
 
   <div v-if="showFacePrompt" class="modal-overlay">
@@ -192,6 +192,7 @@ function onDontShowChange() {
   margin-top: 0.75rem;
 }
 
+/* ★ 三个辅助按钮：深色背景 + 白字 */
 .aux-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -200,7 +201,6 @@ function onDontShowChange() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* ★ 新增：深色背景 + 白字 */
   background: rgba(32, 32, 32, 1.0);
   color: #ffffff;
   border: 1px solid var(--border);
