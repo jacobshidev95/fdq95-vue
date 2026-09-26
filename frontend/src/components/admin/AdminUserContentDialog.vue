@@ -23,7 +23,7 @@ interface ArticleItem {
   content_type: string
   file_url: string | null
   link_url: string | null
-  rich_blocks: unknown
+  rich_blocks: any[] | null
   created_at: string | null
 }
 
@@ -56,6 +56,9 @@ const activeTab = ref<TabKey>('articles')
 const loading = ref(false)
 const loadError = ref('')
 const data = ref<ContentResp | null>(null)
+
+// ★ 富文本文章展开
+const expandedRichId = ref<string | null>(null)
 
 const TABS = computed<{ key: TabKey; label: string; icon: string }[]>(() => [
   { key: 'articles', label: 'Text / Articles', icon: '📄' },
@@ -123,18 +126,30 @@ function fmtDate(iso: string | null): string {
   try { return new Date(iso).toLocaleString() } catch { return iso }
 }
 
-// ★ 判断条目是否可以"打开"
+// ★ 打开 URL（文章 or 视频）
 function openUrl(item: ArticleItem | VideoItem): string | null {
   const a = item as any
   return a.url || a.file_url || a.link_url || null
 }
 
-// ★ 是否显示 Open 按钮
 function canOpen(item: ArticleItem | VideoItem): boolean {
   return !!openUrl(item)
 }
 
-// 删除单条内容
+// ★ 判断条目类型
+function itemType(item: ArticleItem | VideoItem): 'article' | 'video' {
+  return activeTab.value === 'articles' ? 'article' : 'video'
+}
+
+function isRichArticle(item: ArticleItem | VideoItem): boolean {
+  return (item as any).content_type === 'rich'
+}
+
+function toggleRich(article: ArticleItem) {
+  expandedRichId.value = expandedRichId.value === article.id ? null : article.id
+}
+
+// ★ 删除单条内容
 async function deleteItem(item: ArticleItem | VideoItem) {
   const isArticle = activeTab.value === 'articles'
   const isOrphan = (item as any).is_orphan === true
@@ -152,7 +167,6 @@ async function deleteItem(item: ArticleItem | VideoItem) {
 
   try {
     if (isOrphan) {
-      // /uploads/videos/{userUUID}/{filename}
       const parts = (item as any).url.split('/')
       const filename = parts[parts.length - 1]
       await api.delete(`/api/admin/orphans/${props.userId}/${filename}`)
@@ -202,42 +216,78 @@ async function deleteItem(item: ArticleItem | VideoItem) {
         </div>
 
         <ul v-else class="item-list">
-          <li v-for="(item, idx) in currentList" :key="(item as any).id || idx" class="item-row">
-            <div class="item-main">
-              <div class="item-title">
-                {{ (item as any).title || '(untitled)' }}
-                <span v-if="(item as any).is_orphan" class="orphan-badge">
-                  on disk only
-                </span>
+          <template v-for="(item, idx) in currentList" :key="(item as any).id || idx">
+            <li class="item-row">
+              <div class="item-main">
+                <div class="item-title">
+                  {{ (item as any).title || '(untitled)' }}
+                  <span v-if="(item as any).is_orphan" class="orphan-badge">
+                    on disk only
+                  </span>
+                  <span v-if="itemType(item) === 'article'" class="type-badge">
+                    {{ (item as any).content_type }}
+                  </span>
+                </div>
+                <div class="item-meta">
+                  <span v-if="(item as any).category" class="badge">
+                    {{ (item as any).category }}
+                  </span>
+                  <span v-if="(item as any).duration_sec">
+                    ⏱ {{ Math.round((item as any).duration_sec) }}s
+                  </span>
+                  <span v-if="(item as any).file_size">
+                    💾 {{ fmtSize((item as any).file_size) }}
+                  </span>
+                  <span>{{ fmtDate((item as any).created_at) }}</span>
+                </div>
               </div>
-              <div class="item-meta">
-                <span v-if="(item as any).category" class="badge">
-                  {{ (item as any).category }}
-                </span>
-                <span v-if="(item as any).duration_sec">
-                  ⏱ {{ Math.round((item as any).duration_sec) }}s
-                </span>
-                <span v-if="(item as any).file_size">
-                  💾 {{ fmtSize((item as any).file_size) }}
-                </span>
-                <span>{{ fmtDate((item as any).created_at) }}</span>
+              <div class="item-actions">
+                <!-- 富文本：View 展开 -->
+                <button
+                  v-if="itemType(item) === 'article' && isRichArticle(item)"
+                  class="btn-link"
+                  @click="toggleRich(item as ArticleItem)"
+                >
+                  {{ expandedRichId === (item as any).id ? 'Hide' : 'View' }}
+                </button>
+                <!-- 有 URL 的：Open -->
+                <a
+                  v-else-if="canOpen(item)"
+                  :href="openUrl(item) || '#'"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn-link"
+                >Open</a>
+                <button class="btn-del" @click="deleteItem(item)">Delete</button>
               </div>
-            </div>
-            <div class="item-actions">
-              <!-- ★ Open：只要有 url / file_url / link_url 就显示 -->
-              <a
-                v-if="canOpen(item)"
-                :href="openUrl(item) || '#'"
-                target="_blank"
-                rel="noopener"
-                class="btn-link"
-              >Open</a>
-              <button
-                class="btn-del"
-                @click="deleteItem(item)"
-              >Delete</button>
-            </div>
-          </li>
+            </li>
+
+            <!-- 富文本展开内容 -->
+            <li
+              v-if="
+                itemType(item) === 'article' &&
+                expandedRichId === (item as any).id &&
+                (item as any).rich_blocks
+              "
+              class="rich-preview"
+            >
+              <div
+                v-for="(block, bi) in (item as any).rich_blocks"
+                :key="bi"
+                class="rich-block"
+              >
+                <template v-if="block.type === 'text'">
+                  <p class="rich-text">{{ block.content }}</p>
+                </template>
+                <template v-else-if="block.type === 'image'">
+                  <img :src="block.content" class="rich-media" alt="" />
+                </template>
+                <template v-else-if="block.type === 'video'">
+                  <video :src="block.content" controls class="rich-media" />
+                </template>
+              </div>
+            </li>
+          </template>
         </ul>
       </div>
 
@@ -349,6 +399,17 @@ async function deleteItem(item: ArticleItem | VideoItem) {
   font-weight: 600;
   flex-shrink: 0;
 }
+.type-badge {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
 .item-meta {
   display: flex; gap: 0.6rem; flex-wrap: wrap;
   margin-top: 0.2rem;
@@ -385,6 +446,31 @@ async function deleteItem(item: ArticleItem | VideoItem) {
   border-color: rgba(231, 76, 60, 0.4);
 }
 .btn-del:hover { background: rgba(231, 76, 60, 0.3); }
+
+/* ★ 富文本展开 */
+.rich-preview {
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 8px;
+  margin: 0.25rem 0 0.5rem 0.5rem;
+  padding: 0.6rem 0.75rem;
+  list-style: none;
+}
+.rich-block { margin-bottom: 0.5rem; }
+.rich-block:last-child { margin-bottom: 0; }
+.rich-text {
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rich-media {
+  max-width: 100%;
+  border-radius: 6px;
+  display: block;
+}
 
 .modal-footer {
   display: flex; justify-content: flex-end;

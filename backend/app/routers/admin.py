@@ -1,32 +1,27 @@
 """Admin user management API."""
 
+import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import current_active_user, get_user_manager, UserManager
 from app.database import get_async_session
-from app.models import ProviderLevel, User, UserRole
+from app.models import (
+    Article,
+    ProviderLevel,
+    ServiceCategory,
+    User,
+    UserRole,
+    Video,
+)
 from app.schemas import UserCreate
-import os
-from pathlib import Path
-from fastapi import HTTPException
-from sqlalchemy import select, desc, or_
-
-import uuid
-from datetime import datetime, timezone
-from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, desc
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.auth import current_active_user
-from app.database import get_async_session
-from app.models import User, Video, Article, ServiceCategory
 
 router = APIRouter()
 
@@ -404,6 +399,7 @@ async def delete_user(
     print(f"[ADMIN] {admin.user_id} deleted {uid}")
     return AdminActionResponse(ok=True, detail="User deleted")
 
+
 # ══════════════════════════════════════════════════════════════
 # 用户内容管理
 # ══════════════════════════════════════════════════════════════
@@ -428,9 +424,6 @@ def _safe_delete_upload(url: str) -> bool:
     except Exception as e:
         print(f"[admin] delete file failed: {url} → {e}")
     return False
-
-
-UPLOADS_ROOT = Path("/app/uploads")
 
 
 @router.get("/users/{user_id}/content")
@@ -532,9 +525,17 @@ async def list_user_content(
             }
             for a in articles
         ],
-        "videos": [video_dict(v) for v in videos if v.category is None],
-        "live_videos": [video_dict(v) for v in videos if v.category == ServiceCategory.LIVE],
-        "activity_videos": [video_dict(v) for v in videos if v.category == ServiceCategory.ACTIVITY],
+        # ★ 普通视频：排除 LIVE 和 ACTIVITY（包含 category 为 NULL 的历史视频）
+        "videos": [
+            video_dict(v) for v in videos
+            if v.category not in (ServiceCategory.LIVE, ServiceCategory.ACTIVITY)
+        ],
+        "live_videos": [
+            video_dict(v) for v in videos if v.category == ServiceCategory.LIVE
+        ],
+        "activity_videos": [
+            video_dict(v) for v in videos if v.category == ServiceCategory.ACTIVITY
+        ],
         "orphan_files": orphan_files,
     }
 
