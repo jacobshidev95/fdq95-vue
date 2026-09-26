@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore } from '@/stores/i18n'
 import { useAuthStore } from '@/stores/auth'
+import AdminUserContentDialog from '@/components/admin/AdminUserContentDialog.vue'
 
 const i18n = useI18nStore()
 const auth = useAuthStore()
@@ -70,6 +71,11 @@ const changeEmailError = ref('')
 const changeEmailSuccess = ref('')
 const newEmail = ref('')
 const confirmPassword = ref('')
+
+// ★ 新增：用户内容对话框
+const showContentDialog = ref(false)
+const contentDialogUserId = ref('')
+const contentDialogUserLabel = ref('')
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -297,7 +303,7 @@ async function submitChangeEmail() {
   }
 }
 
-// ★ 保留函数，模板中已移除按钮
+// 保留函数（模板中无引用，避免 TS 报未使用）
 function logout() {
   auth.logout()
   router.push('/admin/login')
@@ -305,6 +311,18 @@ function logout() {
 
 function goUserPages() {
   router.push('/profile')
+}
+
+// ★ 双击 User ID / Email → 打开内容对话框
+function openUserContent(u: AdminRow, label?: string) {
+  contentDialogUserId.value = u.id
+  contentDialogUserLabel.value = label || `@${u.user_id}`
+  showContentDialog.value = true
+}
+
+function onContentChanged() {
+  // 内容删除后刷新用户列表（一般无变化，此处留扩展点）
+  void loadUsers()
 }
 
 onMounted(async () => {
@@ -346,21 +364,12 @@ onMounted(async () => {
 
       <button
         v-if="isSystemAdmin"
-        class="btn btn-outline top-btn"
-        @click="openChangeEmail"
-      >
-        ✉️ {{ i18n.t('change_email') }}
-      </button>
-
-      <button
-        v-if="isSystemAdmin"
         class="btn top-btn bg-dark-btn"
         @click="openChangeEmail"
       >
         ✉️ {{ i18n.t('change_email') }}
       </button>
 
-      <!-- ★ User Pages：背景改为纯深色 -->
       <button class="btn top-btn bg-dark-btn" @click="goUserPages">
         👤 {{ i18n.t('back_to_user_pages') }}
       </button>
@@ -380,7 +389,6 @@ onMounted(async () => {
         <option :value="true">{{ i18n.t('admin_only_frozen') }}</option>
         <option :value="false">{{ i18n.t('admin_only_active') }}</option>
       </select>
-      <!-- ★ Search：背景改为纯深色 -->
       <button class="btn bg-dark-btn" @click="page = 1; loadUsers()">
         {{ i18n.t('search') }}
       </button>
@@ -423,8 +431,21 @@ onMounted(async () => {
             :class="{ frozen: u.is_frozen }"
           >
             <td>{{ (page - 1) * pageSize + idx + 1 }}</td>
-            <td class="mono">@{{ u.user_id }}</td>
-            <td class="mono">{{ u.email }}</td>
+            <!-- ★ 双击查看内容 -->
+            <td
+              class="mono clickable"
+              title="Double-click to view content"
+              @dblclick="openUserContent(u, '@' + u.user_id)"
+            >
+              @{{ u.user_id }}
+            </td>
+            <td
+              class="mono clickable"
+              title="Double-click to view content"
+              @dblclick="openUserContent(u, u.email)"
+            >
+              {{ u.email }}
+            </td>
             <td>{{ [u.first_name, u.last_name].filter(Boolean).join(' ') || '—' }}</td>
             <td>
               <span v-if="u.provider_level" class="level-badge">
@@ -606,6 +627,14 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- ============ user content dialog ============ -->
+    <AdminUserContentDialog
+      v-model:visible="showContentDialog"
+      :user-id="contentDialogUserId"
+      :user-label="contentDialogUserLabel"
+      @changed="onContentChanged"
+    />
   </div>
 </template>
 
@@ -678,7 +707,7 @@ onMounted(async () => {
   font-size: 0.82rem;
 }
 
-/* ★ User Pages / Search 按钮：纯深色背景 */
+/* ★ User Pages / Search / Change Email 按钮：纯深色背景 */
 .bg-dark-btn {
   background: rgba(32, 32, 32, 1.0);
   color: var(--text);
@@ -748,6 +777,15 @@ onMounted(async () => {
 .user-table .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: #ddd;
+}
+/* ★ 双击查看内容：可点击提示 */
+.user-table .mono.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.user-table .mono.clickable:hover {
+  color: var(--gold, #e5b80b);
+  text-decoration: underline dotted;
 }
 .empty-cell {
   text-align: center;

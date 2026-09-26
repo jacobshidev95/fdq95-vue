@@ -13,6 +13,11 @@ from app.auth import current_active_user, get_user_manager, UserManager
 from app.database import get_async_session
 from app.models import ProviderLevel, User, UserRole
 from app.schemas import UserCreate
+import os
+from pathlib import Path
+from fastapi import HTTPException
+from sqlalchemy import select, desc, or_
+from app.models import User, Video, Article, ServiceCategory
 
 router = APIRouter()
 
@@ -389,3 +394,147 @@ async def delete_user(
     await session.commit()
     print(f"[ADMIN] {admin.user_id} deleted {uid}")
     return AdminActionResponse(ok=True, detail="User deleted")
+
+# ══════════════════════════════════════════════════════════════
+# 用户内容管理
+# ══════════════════════════════════════════════════════════════
+
+UPLOADS_ROOT = Path("/app/uploads")
+
+
+def _safe_delete_upload(url: str) -> bool:
+    """删除 /uploads/... 对应的物理文件。返回是否删除成功。"""
+    if not url or not url.startswith("/uploads/"):
+        return False
+    rel = url.replace("/uploads/", "", 1)
+    path = UPLOADS_ROOT / rel
+    try:
+        # 防目录穿越
+        path = path.resolve()
+        if not str(path).startswith(str(UPLOADS_ROOT.resolve())):
+            return False
+        if path.exists() and path.is_file():
+            path.unlink()
+            return True
+    except Exception as e:
+        print(f"[admin] delete file failed: {url} → {e}")
+    return False
+
+
+@router.get("/users/{user_id}/content")
+async def list_user_content(
+    user_id: uuid.UUID,
+    me: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """列出某用户的全部内容：文本（文章）、普通视频、Live、Activity。"""
+    target = await session.scalar(select(User).where(User.id == user_id))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # ---- 文章 ----
+    articles = (
+        await session.execute(
+            select(Article)
+            .where(Article.user_id == user_id)
+            .order_by(desc(Article.created_at))
+        )
+    ).scalars().all()
+
+    # ---- 视频（按 category 分组）----
+    videos = (
+        await session.execute(
+            select(Video)
+            .where(Video.user_id == user_id)
+            .order_by(desc(Video.created_at))
+        )
+    ).scalars().all()
+
+    def video_dict(v: Video) -> dict:
+        cat = v.category.value if v.category else None
+        return {
+            "id": str(v.id),
+            "title": v.title,
+            "url": v.url,
+            "thumbnail_url": v.thumbnail_url,
+            "category": cat,
+            "duration_sec": v.duration_sec or 0,
+            "file_size": v.file_size or 0,
+            "views": v.views or 0,
+            "likes": v.likes or 0,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+        }
+
+    return {
+        "user": {
+            "id": str(target.id),
+            "user_id": target.user_id,
+            "email": target.email,
+            "first_name": target.first_name,
+            "last_name": target.last_name,
+        },
+        "articles": [
+            {
+                "id": str(a.id),
+                "title": a.title,
+                "category": a.category.value if a.category else None,
+                "content_type": a.content_type,
+                "file_url": a.file_url,
+                "link_url": a.link_url,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in articles
+        ],
+        "videos": [
+            video_dict(v) for v in videos if v.category is None
+        ],
+        "live_videos": [
+            video_dict(v) for v in videos
+            if v.category == ServiceCategory.LIVE
+        ],
+        "activity_videos": [
+            video_dict(v) for v in videos
+            if v.category == ServiceCategory.ACTIVITY
+        ],
+    }
+
+
+@router.delete("/videos/{video_id}")
+async def admin_delete_video(
+    video_id: uuid.UUID,
+    me: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """管理员删除单个视频记录 + 物理文件。"""
+    v = await session.scalar(select(Video).where(Video.id == video_id))
+    if not v:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    url = v.url
+    await session.delete(v)
+    await session.commit()
+
+    _safe_delete_upload(url)
+
+    return {"ok": True, "deleted_id": str(video_id)}
+
+
+@router.delete("/articles/{article_id}")
+async def admin_delete_article(
+    article_id: uuid.UUID,
+    me: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """管理员删除单篇文章 + 物理文件。"""
+    a = await session.scalar(select(Article).where(Article.id == article_id))
+    if not a:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    file_url = a.file_url
+    await session.delete(a)
+    await session.commit()
+
+    if file_url:
+        _safe_delete_upload(file_url)
+
+    return {"ok": True, "deleted_id": str(article_id)}
