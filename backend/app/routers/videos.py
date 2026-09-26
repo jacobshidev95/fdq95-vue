@@ -13,6 +13,7 @@ from app.database import async_session_maker, get_async_session
 from app.models import ActivityVideo, Follow, Friend, ServiceCategory, User, Video
 from app.schemas import ActivityVideoRead, VideoCreate, VideoCreateResponse, VideoRead
 from app.services.whisper_service import transcribe_video
+from sqlalchemy import desc, select, or_
 
 router = APIRouter()
 
@@ -67,9 +68,12 @@ async def feed(
         # ★ 只显示录制的 Activity 视频
         stmt = stmt.where(Video.category == ServiceCategory.ACTIVITY)
     elif tab == "recommend":
-        # 推荐：排除 live / activity（只显示普通视频）
+        # 推荐：包含普通分类和 NULL（历史视频），仅排除 live / activity
         stmt = stmt.where(
-            Video.category.notin_([ServiceCategory.LIVE, ServiceCategory.ACTIVITY])
+            or_(
+                Video.category.is_(None),
+                Video.category.notin_([ServiceCategory.LIVE, ServiceCategory.ACTIVITY]),
+            )
         )
     # 其它未知 tab：不过滤
 

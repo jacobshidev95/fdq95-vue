@@ -475,10 +475,7 @@ onBeforeUnmount(() => {
   gap: 0.5rem; padding: 0.5rem;
   flex: 1 1 auto; min-height: 0; overflow: hidden;
 }
-.live-page.is-fullscreen .live-body {
-  grid-template-columns: 1fr;
-  gap: 0; padding: 0;
-}
+
 .left-col {
   display: flex; flex-direction: column; gap: 0.4rem; min-height: 0;
 }

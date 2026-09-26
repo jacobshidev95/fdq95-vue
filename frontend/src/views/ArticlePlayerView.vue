@@ -15,7 +15,6 @@ const FEED_TABS = computed<{ key: FeedTab; label: string; icon: string }[]>(() =
   { key: 'following', label: i18n.t('video_tab_following'), icon: '👀' },
   { key: 'friends',   label: i18n.t('video_tab_friends'),   icon: '👥' },
   { key: 'recommend', label: i18n.t('video_tab_recommend'), icon: '✨' },
-  { key: 'activity',  label: i18n.t('video_tab_activity'),  icon: '🎉' },
 ])
 
 const activeTab = ref<FeedTab>('recommend')
