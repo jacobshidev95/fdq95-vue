@@ -515,6 +515,7 @@ export const BASE_TEXT: Record<string, string> = {
   recording_publish: 'Publish',
   recording_upload_failed: 'Upload failed',
   recording_pending_warning: 'You have an unprocessed recording. Please Publish or Discard it first.',
+  live_call_pending: 'Calling the host…',
 }
 
 export const LANGUAGES: Record<string, string> = {

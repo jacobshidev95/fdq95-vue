@@ -203,14 +203,14 @@ function onDontShowChange() {
   text-overflow: ellipsis;
   background: rgba(32, 32, 32, 1.0);
   color: #ffffff;
-  border: 1px solid var(--border);
+  border: 1px solid var(--gold);        /* ★ 金色边框，与 Login/Logout 一致 */
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .aux-btn:hover {
   background: rgba(50, 50, 50, 1.0);
-  border-color: var(--gold);
+  border-color: #ffffff;
 }
 
 .close-btn {

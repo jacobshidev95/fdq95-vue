@@ -175,6 +175,15 @@ async function openInvite() {
   catch { friends.value = [] }
   try { invitees.value = await liveApi.listInvitees(roomId.value) } catch { invitees.value = [] }
 }
+
+function onCall() {
+  if (isHost.value) {
+    openInvite()
+  } else {
+    alert(i18n.t('live_call_pending') || 'Calling the host…')
+  }
+}
+
 async function inviteFriend(userStringId: string) {
   try {
     await liveApi.invite(roomId.value, userStringId)
@@ -248,10 +257,11 @@ onBeforeUnmount(() => {
           <button type="button" class="action-btn">
             😊<span class="label">{{ i18n.t('live_btn_emoji') }}</span>
           </button>
-          <button v-if="isHost" type="button" class="action-btn" @click="openInvite">
-            👥<span class="label">{{ i18n.t('activity_btn_invite') }}</span>
-          </button>
-          <button v-else type="button" class="action-btn">
+          <button
+            type="button"
+            class="action-btn call-btn"
+            @click="onCall"
+          >
             📞<span class="label">{{ i18n.t('live_btn_call') }}</span>
           </button>
           <button type="button" class="action-btn" @click="shareRoom">
@@ -533,6 +543,14 @@ onBeforeUnmount(() => {
   background: #8b5cf6; color: #fff;
   border: none; padding: 0.25rem 0.6rem;
   border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+}
+.action-btn.call-btn {
+  border-color: rgba(46, 204, 113, 0.5);
+  color: #a5f5c6;
+}
+.action-btn.call-btn:hover {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: #2ecc71;
 }
 .muted { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
 @media (max-width: 900px) {

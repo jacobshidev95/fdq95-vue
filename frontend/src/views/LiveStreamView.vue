@@ -214,6 +214,16 @@ async function openInvite() {
   catch { invitees.value = [] }
 }
 
+function onCall() {
+  if (isHost.value) {
+    // 主播点 Call：仍弹邀请弹窗（主播视角的"通话"即邀请好友加入）
+    openInvite()
+  } else {
+    // 观众点 Call：提示"正在呼叫主播"（待接入真实通话信令后扩展）
+    alert(i18n.t('live_call_pending') || 'Calling the host…')
+  }
+}
+
 async function inviteFriend(userStringId: string) {
   try {
     await liveApi.invite(roomId.value, userStringId)
@@ -298,11 +308,10 @@ onBeforeUnmount(() => {
             😊<span class="label">{{ i18n.t('live_btn_emoji') }}</span>
           </button>
           <button
-            v-if="isHost" type="button" class="action-btn" @click="openInvite"
+            type="button"
+            class="action-btn call-btn"
+            @click="onCall"
           >
-            👥<span class="label">{{ i18n.t('activity_btn_invite') }}</span>
-          </button>
-          <button v-else type="button" class="action-btn">
             📞<span class="label">{{ i18n.t('live_btn_call') }}</span>
           </button>
           <button type="button" class="action-btn" @click="shareRoom">
@@ -610,9 +619,17 @@ onBeforeUnmount(() => {
   padding: 0.4rem 0.6rem; font-size: 0.85rem;
 }
 .send-btn {
-  background: #8b5cf6; color: #fff; border: none;
-  border-radius: 6px; padding: 0 0.85rem;
-  font-weight: 600; font-size: 0.82rem; cursor: pointer;
+  flex: 0 0 auto;              /* ★ 不收缩 */
+  min-width: 64px;             /* ★ 保证放得下 "Send" */
+  padding: 0.45rem 1rem;
+  white-space: nowrap;
+  background: #8b5cf6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
 }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -651,6 +668,15 @@ onBeforeUnmount(() => {
   border-radius: 6px; font-size: 0.75rem; cursor: pointer;
 }
 .muted { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
+
+.action-btn.call-btn {
+  border-color: rgba(46, 204, 113, 0.5);
+  color: #a5f5c6;
+}
+.action-btn.call-btn:hover {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: #2ecc71;
+}
 
 @media (max-width: 900px) {
   .live-body {
