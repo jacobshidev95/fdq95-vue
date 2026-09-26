@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore } from '@/stores/i18n'
+import CategorySelect from '@/components/CategorySelect.vue'
 import {
   startGeneration,
   subscribeProgress,
@@ -13,27 +14,9 @@ import {
 const router = useRouter()
 const i18n = useI18nStore()
 
-type Category =
-  | 'medical' | 'health' | 'education' | 'entertainment' | 'travel'
-  | 'food' | 'clothing' | 'industry' | 'tech' | 'iot' | 'life' | 'ai'
-
-const CATEGORIES: { value: Category; key: string }[] = [
-  { value: 'medical', key: 'Medical' },
-  { value: 'health', key: 'Health' },
-  { value: 'education', key: 'Education' },
-  { value: 'entertainment', key: 'Entertainment' },
-  { value: 'travel', key: 'Travel' },
-  { value: 'food', key: 'Food' },
-  { value: 'clothing', key: 'Clothing' },
-  { value: 'industry', key: 'Industry' },
-  { value: 'tech', key: 'Technology' },
-  { value: 'iot', key: 'IoT' },
-  { value: 'life', key: 'Life' },
-  { value: 'ai', key: 'AI' },
-]
-
 const title = ref('')
-const category = ref<Category | null>(null)
+// ★ 分类改为 string | null，配合 CategorySelect
+const category = ref<string | null>(null)
 const prompt = ref('')
 
 // ★ 默认 8 秒（最便宜）
@@ -117,7 +100,6 @@ async function generateVideo() {
     return
   }
 
-  // ★ 前端预算预检查
   if (budgetInfo.value) {
     const estCost = targetDuration.value * (budgetInfo.value.price_per_second_cents || 7.5)
     const today = budgetInfo.value.today_spent_cents
@@ -135,19 +117,16 @@ async function generateVideo() {
   generatedVideoId.value = ''
 
   try {
-    // ★ 生成幂等键（防止重复提交）
     const idempotencyKey = crypto.randomUUID()
 
-    // 1. 触发后端流水线
     const { task_id } = await startGeneration({
       idea: prompt.value.trim(),
       target_duration: targetDuration.value,
-      language: i18n.language,          // ★ 直接用 i18n.language
+      language: i18n.language,
       idempotency_key: idempotencyKey,
     })
     generateStage.value = i18n.t('ai_video_stage_processing')
 
-    // 2. 订阅 SSE，等待完成
     await new Promise<void>((resolve, reject) => {
       eventSource = subscribeProgress(
         task_id,
@@ -282,20 +261,14 @@ onBeforeUnmount(() => {
         />
       </section>
 
-      <!-- 类别 -->
+      <!-- ★ 类别：COMBOX -->
       <section class="card">
         <label class="field-label">{{ i18n.t('publish_video_category') }}</label>
-        <div class="radio-grid">
-          <label v-for="cat in CATEGORIES" :key="cat.value" class="radio-item">
-            <input
-              type="radio"
-              name="ai-category"
-              :value="cat.value"
-              v-model="category"
-            />
-            <span>{{ cat.key }}</span>
-          </label>
-        </div>
+        <CategorySelect
+          v-model="category"
+          storage-key="fdq95_aivideo_category"
+          :placeholder="i18n.t('publish_video_category') || 'Select category'"
+        />
       </section>
 
       <!-- 创意 + 时长 -->
@@ -505,27 +478,6 @@ onBeforeUnmount(() => {
 }
 .title-input:focus { outline: none; border-color: #8b5cf6; }
 
-.radio-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem 0.6rem;
-}
-.radio-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-  font-size: 0.85rem;
-}
-.radio-item input {
-  width: auto;
-  margin: 0;
-  accent-color: #8b5cf6;
-}
-
-/* 创意卡片头：label + 时长下拉 */
 .prompt-head {
   display: flex;
   justify-content: space-between;
@@ -616,7 +568,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   position: relative;
 }
-.progress-track.small { height: 6px; margin-top: 0.6rem; }
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #8b5cf6, #a78bfa);
@@ -683,7 +634,6 @@ onBeforeUnmount(() => {
 }
 .action-btn.generate:hover:not(:disabled) { background: #7c3aed; }
 
-/* ★ 今日预算显示 */
 .budget-hint {
   text-align: center;
   font-size: 0.75rem;
@@ -834,9 +784,7 @@ onBeforeUnmount(() => {
   color: #a5f6c6;
 }
 
-/* 响应式 */
 @media (max-width: 720px) {
-  .radio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {

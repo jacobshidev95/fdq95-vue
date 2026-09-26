@@ -3,31 +3,14 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { useI18nStore } from '@/stores/i18n'
+import CategorySelect from '@/components/CategorySelect.vue'
 
 const router = useRouter()
 const i18n = useI18nStore()
 
-type Category =
-  | 'medical' | 'health' | 'education' | 'entertainment' | 'travel'
-  | 'food' | 'clothing' | 'industry' | 'tech' | 'iot' | 'life' | 'ai'
-
-const CATEGORIES: { value: Category; key: string }[] = [
-  { value: 'medical', key: 'Medical' },
-  { value: 'health', key: 'Health' },
-  { value: 'education', key: 'Education' },
-  { value: 'entertainment', key: 'Entertainment' },
-  { value: 'travel', key: 'Travel' },
-  { value: 'food', key: 'Food' },
-  { value: 'clothing', key: 'Clothing' },
-  { value: 'industry', key: 'Industry' },
-  { value: 'tech', key: 'Technology' },
-  { value: 'iot', key: 'IoT' },
-  { value: 'life', key: 'Life' },
-  { value: 'ai', key: 'AI' },
-]
-
 const title = ref('')
-const category = ref<Category | null>(null)
+// ★ 分类改为 string | null，配合 CategorySelect
+const category = ref<string | null>(null)
 
 // 录制状态
 const previewStream = ref<MediaStream | null>(null)
@@ -50,7 +33,6 @@ const useBeauty = ref(false)
 // 页面状态
 const loading = ref(false)
 const publishing = ref(false)
-// ★★★ 上传进度 0-100
 const uploadProgress = ref(0)
 const errorMsg = ref('')
 const successMsg = ref('')
@@ -250,7 +232,6 @@ function closePlayback() {
   showPlayback.value = false
 }
 
-// ★★★ 发布：上传时显示进度条
 async function publish() {
   errorMsg.value = ''
   successMsg.value = ''
@@ -275,7 +256,6 @@ async function publish() {
     const ext = recordedBlob.value.type.includes('mp4') ? 'mp4' : 'webm'
     fd.append('file', recordedBlob.value, `record-${Date.now()}.${ext}`)
 
-    // ★ 上传视频（带进度回调）
     const { data: upload } = await api.post('/api/videos/upload-video', fd, {
       timeout: 300000,
       onUploadProgress: (e) => {
@@ -289,7 +269,6 @@ async function publish() {
     })
     uploadProgress.value = 100
 
-    // 保存元数据（服务器端处理很快，无需进度）
     await api.post('/api/videos', {
       title: title.value.trim(),
       category: category.value,
@@ -357,18 +336,13 @@ onBeforeUnmount(() => {
         />
       </section>
 
+      <!-- ★ 分类选择：COMBOX -->
       <section class="card category-card">
-        <div class="radio-grid">
-          <label v-for="cat in CATEGORIES" :key="cat.value" class="radio-item">
-            <input
-              type="radio"
-              name="rec-category"
-              :value="cat.value"
-              v-model="category"
-            />
-            <span>{{ cat.key }}</span>
-          </label>
-        </div>
+        <CategorySelect
+          v-model="category"
+          storage-key="fdq95_record_category"
+          :placeholder="i18n.t('publish_video_category') || 'Select category'"
+        />
       </section>
 
       <section class="card video-card">
@@ -472,7 +446,6 @@ onBeforeUnmount(() => {
       </section>
 
       <section class="card action-card">
-        <!-- ★★★ 上传进度条（publishing 时显示） -->
         <div v-if="publishing" class="upload-progress-wrap">
           <div class="upload-progress-track">
             <div
@@ -617,33 +590,8 @@ onBeforeUnmount(() => {
 }
 .title-input:focus { outline: none; border-color: #8b5cf6; }
 
+/* ★ 分类卡片：COMBOX */
 .category-card { padding: 0.5rem 0.6rem; }
-.radio-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.3rem 0.5rem;
-}
-.radio-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-  font-size: 0.72rem;
-}
-.radio-item input {
-  width: 12px;
-  height: 12px;
-  margin: 0;
-  accent-color: #8b5cf6;
-  flex-shrink: 0;
-}
-.radio-item span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 .video-card {
   flex: 1 1 auto;
@@ -797,7 +745,6 @@ onBeforeUnmount(() => {
   );
 }
 
-/* ★★★ 上传进度条 */
 .upload-progress-wrap {
   margin-bottom: 0.5rem;
   padding: 0.4rem 0.55rem;
@@ -966,9 +913,6 @@ onBeforeUnmount(() => {
   .title-card { padding: 0.35rem 0.5rem; }
   .title-input { padding: 0.38rem 0.6rem; font-size: 0.88rem; }
   .category-card { padding: 0.4rem 0.5rem; }
-  .radio-grid { gap: 0.2rem 0.4rem; }
-  .radio-item { font-size: 0.68rem; gap: 0.2rem; }
-  .radio-item input { width: 11px; height: 11px; }
   .video-card { padding: 0.25rem; }
   .controls-card { padding: 0.45rem 0.4rem 0.4rem; }
   .record-btn { padding: 0.55rem 0.9rem; font-size: 0.85rem; }
