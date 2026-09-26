@@ -65,7 +65,10 @@ function fmtRecTime(sec: number): string {
 // ★ 单个"录制/结束"切换按钮
 async function onToggleRecordEnd() {
   if (!recorder.isRecording.value) {
-    // 开始录制
+    // ★ 开始录制前，如果不在全屏，自动进入全屏
+    if (!isFullscreen.value) {
+      isFullscreen.value = true
+    }
     try {
       await recorder.start()
     } catch (e: any) {
@@ -619,9 +622,11 @@ onBeforeUnmount(() => {
   padding: 0.4rem 0.6rem; font-size: 0.85rem;
 }
 .send-btn {
-  flex: 0 0 auto;              /* ★ 不收缩 */
-  min-width: 64px;             /* ★ 保证放得下 "Send" */
-  padding: 0.45rem 1rem;
+  flex: 0 0 100px;          /* ★ 固定宽度，与底部按钮接近 */
+  width: 100px;
+  min-width: 100px;
+  padding: 0.45rem 0;
+  text-align: center;
   white-space: nowrap;
   background: #8b5cf6;
   color: #fff;
@@ -668,15 +673,6 @@ onBeforeUnmount(() => {
   border-radius: 6px; font-size: 0.75rem; cursor: pointer;
 }
 .muted { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
-
-.action-btn.call-btn {
-  border-color: rgba(46, 204, 113, 0.5);
-  color: #a5f5c6;
-}
-.action-btn.call-btn:hover {
-  background: rgba(46, 204, 113, 0.15);
-  border-color: #2ecc71;
-}
 
 @media (max-width: 900px) {
   .live-body {

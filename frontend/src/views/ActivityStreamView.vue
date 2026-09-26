@@ -59,6 +59,10 @@ function fmtRecTime(sec: number): string {
 
 async function onToggleRecordEnd() {
   if (!recorder.isRecording.value) {
+    // ★ 开始录制前，如果不在全屏，自动进入全屏
+    if (!isFullscreen.value) {
+      isFullscreen.value = true
+    }
     try {
       await recorder.start()
     } catch (e: any) {
@@ -544,14 +548,7 @@ onBeforeUnmount(() => {
   border: none; padding: 0.25rem 0.6rem;
   border-radius: 6px; font-size: 0.75rem; cursor: pointer;
 }
-.action-btn.call-btn {
-  border-color: rgba(46, 204, 113, 0.5);
-  color: #a5f5c6;
-}
-.action-btn.call-btn:hover {
-  background: rgba(46, 204, 113, 0.15);
-  border-color: #2ecc71;
-}
+
 .muted { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; }
 @media (max-width: 900px) {
   .activity-body {
