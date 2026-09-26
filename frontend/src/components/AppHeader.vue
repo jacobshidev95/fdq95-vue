@@ -54,7 +54,6 @@ function logout() {
         {{ i18n.t('login') }}
       </button>
       <template v-else>
-        <span class="user">{{ auth.user?.user_id || auth.user?.email }}</span>
         <button class="btn nav-btn" @click="logout">
           {{ i18n.t('logout') || 'Logout' }}
         </button>

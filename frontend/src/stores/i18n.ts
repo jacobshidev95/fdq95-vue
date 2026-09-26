@@ -516,6 +516,9 @@ export const BASE_TEXT: Record<string, string> = {
   recording_upload_failed: 'Upload failed',
   recording_pending_warning: 'You have an unprocessed recording. Please Publish or Discard it first.',
   live_call_pending: 'Calling the host…',
+  // ── 注册验证提示 ──
+  register_success_verify_email_24h:
+  'Registration successful! Please verify your email within 24 hours, or your account will be deleted automatically.',
 }
 
 export const LANGUAGES: Record<string, string> = {

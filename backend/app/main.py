@@ -11,7 +11,7 @@ import traceback
 import asyncio
 # 在文件顶部的 import 区域添加
 from app.routers import ai_video
-
+from app.tasks.cleanup_unverified import cleanup_unverified_loop
 from app.auth import auth_backend, fastapi_users
 from app.config import settings
 from app.database import Base, engine
@@ -117,16 +117,20 @@ async def lifespan(app: FastAPI):
 
     # ★ 启动 AI 视频临时文件清理任务
     from app.routers.ai_video import cleanup_stale_temp_files
-    cleanup_task = asyncio.create_task(cleanup_stale_temp_files())
+    ai_cleanup_task = asyncio.create_task(cleanup_stale_temp_files())
+
+    # ★ 启动未验证用户清理任务
+    unverified_cleanup_task = asyncio.create_task(cleanup_unverified_loop())
 
     yield
 
-    # ★ 关闭时取消清理任务
-    cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
+    # ★ 关闭时取消所有清理任务
+    for t in (ai_cleanup_task, unverified_cleanup_task):
+        t.cancel()
+        try:
+            await t
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(title="FDQ95 API", version="0.4.0", lifespan=lifespan)
 

@@ -122,7 +122,7 @@ onMounted(async () => {
 
 async function submit() {
   error.value = ''
-  success.value = ''
+  success.value = 'Registration successful! Please verify your email within 24 hours, or your account will be deleted automatically.'
 
   if (!form.email || !form.password || !form.user_id) {
     error.value = i18n.t('please_fill_required')
@@ -178,8 +178,8 @@ async function submit() {
   loading.value = true
   try {
     await api.post('/auth/register', payload)
-    success.value = i18n.t('register_success_verify_email')
-    setTimeout(() => router.push('/login'), 2500)
+    success.value = i18n.t('register_success_verify_email_24h')
+    setTimeout(() => router.push('/login'), 3500)
   } catch (e) {
     const ax = e as AxiosError<{ detail?: unknown }>
     let msg = i18n.t('register_failed')
