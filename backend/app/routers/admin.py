@@ -17,6 +17,15 @@ import os
 from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import select, desc, or_
+
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.auth import current_active_user
+from app.database import get_async_session
 from app.models import User, Video, Article, ServiceCategory
 
 router = APIRouter()
@@ -421,13 +430,16 @@ def _safe_delete_upload(url: str) -> bool:
     return False
 
 
+UPLOADS_ROOT = Path("/app/uploads")
+
+
 @router.get("/users/{user_id}/content")
 async def list_user_content(
     user_id: uuid.UUID,
     me: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """列出某用户的全部内容：文本（文章）、普通视频、Live、Activity。"""
+    """列出某用户的全部内容：文本、普通视频、Live、Activity + 磁盘孤儿文件。"""
     target = await session.scalar(select(User).where(User.id == user_id))
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
@@ -441,7 +453,7 @@ async def list_user_content(
         )
     ).scalars().all()
 
-    # ---- 视频（按 category 分组）----
+    # ---- 视频 ----
     videos = (
         await session.execute(
             select(Video)
@@ -463,7 +475,41 @@ async def list_user_content(
             "views": v.views or 0,
             "likes": v.likes or 0,
             "created_at": v.created_at.isoformat() if v.created_at else None,
+            "is_orphan": False,
         }
+
+    # ★ 扫描磁盘：找该用户目录下所有未被数据库记录的孤儿文件
+    existing_urls = {v.url for v in videos}
+    orphan_files: list[dict] = []
+    user_dir = UPLOADS_ROOT / "videos" / str(user_id)
+    if user_dir.exists() and user_dir.is_dir():
+        for f in sorted(user_dir.rglob("*")):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() not in {".mp4", ".webm"}:
+                continue
+            url = f"/uploads/videos/{user_id}/{f.name}"
+            if url in existing_urls:
+                continue
+            try:
+                st = f.stat()
+                orphan_files.append({
+                    "id": None,
+                    "title": f"Orphan: {f.stem[:40]}",
+                    "url": url,
+                    "thumbnail_url": None,
+                    "category": None,
+                    "duration_sec": 0,
+                    "file_size": st.st_size,
+                    "views": 0,
+                    "likes": 0,
+                    "created_at": datetime.fromtimestamp(
+                        st.st_mtime, tz=timezone.utc
+                    ).isoformat(),
+                    "is_orphan": True,
+                })
+            except Exception as e:
+                print(f"[admin] scan orphan failed: {f} → {e}")
 
     return {
         "user": {
@@ -481,22 +527,39 @@ async def list_user_content(
                 "content_type": a.content_type,
                 "file_url": a.file_url,
                 "link_url": a.link_url,
+                "rich_blocks": a.rich_blocks,
                 "created_at": a.created_at.isoformat() if a.created_at else None,
             }
             for a in articles
         ],
-        "videos": [
-            video_dict(v) for v in videos if v.category is None
-        ],
-        "live_videos": [
-            video_dict(v) for v in videos
-            if v.category == ServiceCategory.LIVE
-        ],
-        "activity_videos": [
-            video_dict(v) for v in videos
-            if v.category == ServiceCategory.ACTIVITY
-        ],
+        "videos": [video_dict(v) for v in videos if v.category is None],
+        "live_videos": [video_dict(v) for v in videos if v.category == ServiceCategory.LIVE],
+        "activity_videos": [video_dict(v) for v in videos if v.category == ServiceCategory.ACTIVITY],
+        "orphan_files": orphan_files,
     }
+
+
+@router.delete("/orphans/{user_id}/{filename}")
+async def delete_orphan_file(
+    user_id: uuid.UUID,
+    filename: str,
+    me: User = Depends(current_active_user),
+):
+    """管理员删除磁盘孤儿文件（无 DB 记录）。"""
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    path = (UPLOADS_ROOT / "videos" / str(user_id) / filename).resolve()
+    try:
+        if not str(path).startswith(str(UPLOADS_ROOT.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if not path.exists() or not path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+        path.unlink()
+        return {"ok": True, "deleted": filename}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
 
 
 @router.delete("/videos/{video_id}")

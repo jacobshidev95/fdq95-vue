@@ -7,8 +7,8 @@ const i18n = useI18nStore()
 
 const props = defineProps<{
   visible: boolean
-  userId: string        // UUID 字符串
-  userLabel: string     // 显示用（@abc95med 或 email）
+  userId: string
+  userLabel: string
 }>()
 
 const emit = defineEmits<{
@@ -23,11 +23,12 @@ interface ArticleItem {
   content_type: string
   file_url: string | null
   link_url: string | null
+  rich_blocks: unknown
   created_at: string | null
 }
 
 interface VideoItem {
-  id: string
+  id: string | null
   title: string
   url: string
   thumbnail_url: string | null
@@ -37,6 +38,7 @@ interface VideoItem {
   views: number
   likes: number
   created_at: string | null
+  is_orphan: boolean
 }
 
 interface ContentResp {
@@ -45,31 +47,45 @@ interface ContentResp {
   videos: VideoItem[]
   live_videos: VideoItem[]
   activity_videos: VideoItem[]
+  orphan_files: VideoItem[]
 }
 
-type TabKey = 'articles' | 'videos' | 'live' | 'activity'
+type TabKey = 'articles' | 'videos' | 'live' | 'activity' | 'orphans'
 
 const activeTab = ref<TabKey>('articles')
 const loading = ref(false)
 const loadError = ref('')
 const data = ref<ContentResp | null>(null)
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
+const TABS = computed<{ key: TabKey; label: string; icon: string }[]>(() => [
   { key: 'articles', label: 'Text / Articles', icon: '📄' },
   { key: 'videos',   label: 'Videos',          icon: '🎬' },
   { key: 'live',     label: 'Live Videos',     icon: '📺' },
   { key: 'activity', label: 'Activity Videos', icon: '🎉' },
-]
+  { key: 'orphans',  label: 'Files on Disk',   icon: '📁' },
+])
 
-const currentList = computed(() => {
+const currentList = computed<ArticleItem[] | VideoItem[]>(() => {
   if (!data.value) return []
   switch (activeTab.value) {
     case 'articles': return data.value.articles
     case 'videos':   return data.value.videos
     case 'live':     return data.value.live_videos
     case 'activity': return data.value.activity_videos
+    case 'orphans':  return data.value.orphan_files
   }
 })
+
+function countFor(key: TabKey): number {
+  if (!data.value) return 0
+  switch (key) {
+    case 'articles': return data.value.articles.length
+    case 'videos':   return data.value.videos.length
+    case 'live':     return data.value.live_videos.length
+    case 'activity': return data.value.activity_videos.length
+    case 'orphans':  return data.value.orphan_files.length
+  }
+}
 
 async function load() {
   if (!props.userId) return
@@ -107,15 +123,43 @@ function fmtDate(iso: string | null): string {
   try { return new Date(iso).toLocaleString() } catch { return iso }
 }
 
-// ★ 删除单条内容
-async function deleteItem(kind: TabKey, id: string, title: string) {
-  const what = kind === 'articles' ? 'article' : 'video'
-  if (!confirm(`Delete this ${what}?\n\n"${title}"\n\nThis cannot be undone.`)) return
+// ★ 判断条目是否可以"打开"
+function openUrl(item: ArticleItem | VideoItem): string | null {
+  const a = item as any
+  return a.url || a.file_url || a.link_url || null
+}
+
+// ★ 是否显示 Open 按钮
+function canOpen(item: ArticleItem | VideoItem): boolean {
+  return !!openUrl(item)
+}
+
+// 删除单条内容
+async function deleteItem(item: ArticleItem | VideoItem) {
+  const isArticle = activeTab.value === 'articles'
+  const isOrphan = (item as any).is_orphan === true
+  const title = (item as any).title || '(untitled)'
+
+  let confirmMsg = ''
+  if (isOrphan) {
+    confirmMsg = `Delete this file from disk?\n\n"${title}"\n\nThis cannot be undone.`
+  } else if (isArticle) {
+    confirmMsg = `Delete this article?\n\n"${title}"\n\nThis cannot be undone.`
+  } else {
+    confirmMsg = `Delete this video?\n\n"${title}"\n\nThis cannot be undone.`
+  }
+  if (!confirm(confirmMsg)) return
+
   try {
-    if (kind === 'articles') {
-      await api.delete(`/api/admin/articles/${id}`)
+    if (isOrphan) {
+      // /uploads/videos/{userUUID}/{filename}
+      const parts = (item as any).url.split('/')
+      const filename = parts[parts.length - 1]
+      await api.delete(`/api/admin/orphans/${props.userId}/${filename}`)
+    } else if (isArticle) {
+      await api.delete(`/api/admin/articles/${(item as any).id}`)
     } else {
-      await api.delete(`/api/admin/videos/${id}`)
+      await api.delete(`/api/admin/videos/${(item as any).id}`)
     }
     await load()
     emit('changed')
@@ -145,14 +189,7 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
           @click="activeTab = t.key"
         >
           {{ t.icon }} {{ t.label }}
-          <span class="tab-count">
-            {{
-              t.key === 'articles' ? (data?.articles.length ?? 0)
-              : t.key === 'videos' ? (data?.videos.length ?? 0)
-              : t.key === 'live' ? (data?.live_videos.length ?? 0)
-              : (data?.activity_videos.length ?? 0)
-            }}
-          </span>
+          <span class="tab-count">{{ countFor(t.key) }}</span>
         </button>
       </div>
 
@@ -165,10 +202,13 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
         </div>
 
         <ul v-else class="item-list">
-          <li v-for="item in currentList" :key="item.id" class="item-row">
+          <li v-for="(item, idx) in currentList" :key="(item as any).id || idx" class="item-row">
             <div class="item-main">
               <div class="item-title">
                 {{ (item as any).title || '(untitled)' }}
+                <span v-if="(item as any).is_orphan" class="orphan-badge">
+                  on disk only
+                </span>
               </div>
               <div class="item-meta">
                 <span v-if="(item as any).category" class="badge">
@@ -184,16 +224,17 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
               </div>
             </div>
             <div class="item-actions">
+              <!-- ★ Open：只要有 url / file_url / link_url 就显示 -->
               <a
-                v-if="(item as any).url || (item as any).file_url"
-                :href="(item as any).url || (item as any).file_url || '#'"
+                v-if="canOpen(item)"
+                :href="openUrl(item) || '#'"
                 target="_blank"
                 rel="noopener"
                 class="btn-link"
               >Open</a>
               <button
                 class="btn-del"
-                @click="deleteItem(activeTab, item.id, (item as any).title || '')"
+                @click="deleteItem(item)"
               >Delete</button>
             </div>
           </li>
@@ -216,7 +257,7 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
   padding: 1rem;
 }
 .modal {
-  width: 92%; max-width: 820px;
+  width: 92%; max-width: 880px;
   max-height: 88vh;
   background: #111;
   border: 1px solid var(--border, #333);
@@ -250,7 +291,7 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
   border: 1px solid var(--border, #333);
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -264,7 +305,7 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
 .tab-count {
   display: inline-block;
   margin-left: 0.35rem;
-  padding: 0 0.35rem;
+  padding: 0 0.4rem;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.7rem;
@@ -293,9 +334,20 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
 .item-row:last-child { border-bottom: none; }
 .item-main { flex: 1; min-width: 0; }
 .item-title {
+  display: flex; align-items: center; gap: 0.45rem;
   font-size: 0.9rem;
   color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.orphan-badge {
+  background: rgba(229, 184, 11, 0.2);
+  color: #e5b80b;
+  border: 1px solid rgba(229, 184, 11, 0.5);
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 .item-meta {
   display: flex; gap: 0.6rem; flex-wrap: wrap;
@@ -313,7 +365,7 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
   display: flex; gap: 0.4rem; flex-shrink: 0;
 }
 .btn-link, .btn-del {
-  padding: 0.3rem 0.7rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 6px;
   font-size: 0.75rem;
   cursor: pointer;
@@ -322,11 +374,11 @@ async function deleteItem(kind: TabKey, id: string, title: string) {
   white-space: nowrap;
 }
 .btn-link {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ddd;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.4);
 }
-.btn-link:hover { color: #fff; }
+.btn-link:hover { background: rgba(139, 92, 246, 0.3); }
 .btn-del {
   background: rgba(231, 76, 60, 0.15);
   color: #ff8a80;
