@@ -70,10 +70,13 @@ async function onToggleRecordEnd() {
     }
     return
   }
+
+  // 停止录制 → 弹预览
   const blob = await recorder.stop()
   if (blob && blob.size > 0) {
     showPreview.value = true
   } else {
+    // 没录到东西，直接结束
     await endActivityAndReturn()
   }
 }
