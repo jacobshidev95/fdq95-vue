@@ -132,7 +132,7 @@ async function endActivityAndReturn() {
   } catch (e) {
     console.warn('[end] failed', e)
   }
-  router.replace('/activity')
+  router.replace('/videos?tab=activity')
 }
 
 async function loadAll() {

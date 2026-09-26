@@ -142,7 +142,7 @@ async function endLiveAndReturn() {
   } catch (e) {
     console.warn('[end] failed', e)
   }
-  router.replace('/live')
+  router.replace('/videos?tab=live')
 }
 
 async function loadAll() {

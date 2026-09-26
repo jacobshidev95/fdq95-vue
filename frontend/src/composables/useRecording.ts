@@ -56,8 +56,13 @@ export function useRecording(options: UseRecordingOptions = {}) {
         frameRate: 30,
         width: { ideal: 1280 },
         height: { ideal: 720 },
+        displaySurface: 'browser',       // ★ 提示优先显示标签页
       },
       audio: true,
+      preferCurrentTab: true,            // ★ Chrome 自动选中当前标签页
+      selfBrowserSurface: 'include',     // 允许共享当前标签页
+      surfaceSwitching: 'include',       // 允许录制中切换共享源
+      systemAudio: 'include',            // 尽量捕获系统音频
     })
     displayStream = stream as MediaStream
 

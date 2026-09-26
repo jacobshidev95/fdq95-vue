@@ -12,7 +12,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   storageKey: 'fdq95_category_last',
-  placeholder: '选择分类',
+  placeholder: 'Select category',
   disabled: false,
   includeAll: false,
   allLabel: '全部',
@@ -23,17 +23,17 @@ const emit = defineEmits<{
 }>()
 
 const CATEGORIES: { value: string; key: string }[] = [
-  { value: 'medical',       key: '医疗' },
-  { value: 'health',        key: '健康' },
-  { value: 'education',     key: '教育' },
-  { value: 'entertainment', key: '娱乐' },
-  { value: 'travel',        key: '旅游' },
-  { value: 'food',          key: '美食' },
-  { value: 'clothing',      key: '服饰' },
-  { value: 'industry',      key: '工业' },
-  { value: 'tech',          key: '科技' },
-  { value: 'iot',           key: '物联网' },
-  { value: 'life',          key: '生活' },
+  { value: 'medical',       key: 'Medical' },
+  { value: 'health',        key: 'Health' },
+  { value: 'education',     key: 'Education' },
+  { value: 'entertainment', key: 'Entertainment' },
+  { value: 'travel',        key: 'Travel' },
+  { value: 'food',          key: 'Food' },
+  { value: 'clothing',      key: 'Clothing' },
+  { value: 'industry',      key: 'Industry' },
+  { value: 'tech',          key: 'Technology' },
+  { value: 'iot',           key: 'IoT' },
+  { value: 'life',          key: 'Life' },
   { value: 'ai',            key: 'AI' },
 ]
 
@@ -104,7 +104,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
         v-model="query"
         class="cat-search"
         type="text"
-        placeholder="搜索分类…"
+        placeholder="Search category…"
         @click.stop
       />
       <ul class="cat-list">
@@ -121,7 +121,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           :class="{ active: modelValue === c.value }"
           @click="pick(c.value)"
         >{{ c.key }}</li>
-        <li v-if="filtered.length === 0" class="cat-empty">无匹配</li>
+        <li v-if="filtered.length === 0" class="cat-empty">Not Match</li>
       </ul>
     </div>
   </div>
